@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@multica/ui/lib/utils";
 import { useTabHistory } from "@/hooks/use-tab-history";
+import { useTabStore } from "@/stores/tab-store";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -99,6 +100,16 @@ function useNativeNavigationGestures() {
       }
     });
   }, [goBack, goForward]);
+}
+
+// Cmd/Ctrl+Shift+[ / ] → previous/next tab. Main intercepts the chord and
+// sends the direction here; the tab store owns the actual selection.
+function useTabSelectionShortcut() {
+  useEffect(() => {
+    return window.desktopAPI.onSelectRelativeTab((direction) => {
+      useTabStore.getState().selectAdjacentTab(direction);
+    });
+  }, []);
 }
 
 // The main area's top bar doubles as a window drag region. When the sidebar
@@ -208,6 +219,7 @@ function DesktopInboxBridge() {
 export function DesktopShell() {
   useInternalLinkHandler();
   useNativeNavigationGestures();
+  useTabSelectionShortcut();
 
   // Reactive read of current workspace slug from the platform singleton.
   // On first mount, slug is null until WorkspaceRouteLayout (inside the tab

@@ -178,7 +178,11 @@ describe("keyboard shortcut definitions", () => {
   });
 
   it("keeps app-owned and editing accelerators reserved on desktop", () => {
-    for (const key of ["W", "R", "Q", "A", "C", "V", "X", "Y", "Z", "0", "Minus", "Plus"]) {
+    for (const key of [
+      "W", "R", "Q", "A", "C", "V", "X", "Y", "Z", "0", "Minus", "Plus",
+      // History back/forward and tab-switch brackets (plus shifted glyphs).
+      "[", "]", "{", "}",
+    ]) {
       expect(
         isReservedShortcut(createShortcutChord(key, { primary: true }), "macos", "desktop"),
       ).toBe(true);

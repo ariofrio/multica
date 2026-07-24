@@ -16,6 +16,11 @@ import {
   type NavigationGesture,
 } from "../shared/navigation-gestures";
 import {
+  isTabSelectionDirection,
+  TAB_SELECTION_CHANNEL,
+  type TabSelectionDirection,
+} from "../shared/tab-selection";
+import {
   readDesktopWindowContext,
   type IssueWindowRequest,
 } from "../shared/issue-window";
@@ -212,6 +217,20 @@ const desktopAPI = {
     ipcRenderer.on("tab:close-active", handler);
     return () => {
       ipcRenderer.removeListener("tab:close-active", handler);
+    };
+  },
+  /** Listen for Cmd/Ctrl+Shift+[ / ] tab-switch requests from the main
+   *  process. The renderer should activate the previous/next product tab in
+   *  the active workspace. Returns an unsubscribe fn. */
+  onSelectRelativeTab: (
+    callback: (direction: TabSelectionDirection) => void,
+  ) => {
+    const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => {
+      if (isTabSelectionDirection(direction)) callback(direction);
+    };
+    ipcRenderer.on(TAB_SELECTION_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(TAB_SELECTION_CHANNEL, handler);
     };
   },
   /** Ask the main process to close the window (used after closing the last tab). */

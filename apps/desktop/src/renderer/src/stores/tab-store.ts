@@ -144,6 +144,12 @@ interface TabStore {
    * path that "jumps" to a tab belonging to a non-active workspace.
    */
   setActiveTab: (tabId: string) => void;
+  /**
+   * Activate the previous/next tab within the active workspace group,
+   * wrapping around at the ends. No-op when there is no active workspace or
+   * fewer than two tabs. Drives the Cmd/Ctrl+Shift+[ / ] shortcuts.
+   */
+  selectAdjacentTab: (direction: "previous" | "next") => void;
   /** Patch display metadata of a tab (title-sync). Finds across groups. */
   updateTab: (tabId: string, patch: Partial<Pick<TabSession, "title">>) => void;
   /**
@@ -551,6 +557,26 @@ export const useTabStore = create<TabStore>()(
           byWorkspace: {
             ...byWorkspace,
             [slug]: { ...group, activeTabId: tabId },
+          },
+        });
+      },
+
+      selectAdjacentTab(direction) {
+        const { byWorkspace, activeWorkspaceSlug } = get();
+        if (!activeWorkspaceSlug) return;
+        const group = byWorkspace[activeWorkspaceSlug];
+        if (!group || group.tabs.length < 2) return;
+        const index = group.tabs.findIndex((t) => t.id === group.activeTabId);
+        if (index < 0) return;
+        const count = group.tabs.length;
+        const delta = direction === "next" ? 1 : -1;
+        const nextIndex = (index + delta + count) % count;
+        const nextId = group.tabs[nextIndex].id;
+        if (nextId === group.activeTabId) return;
+        set({
+          byWorkspace: {
+            ...byWorkspace,
+            [activeWorkspaceSlug]: { ...group, activeTabId: nextId },
           },
         });
       },

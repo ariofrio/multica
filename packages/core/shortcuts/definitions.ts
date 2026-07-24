@@ -247,6 +247,12 @@ const PRIMARY_RESERVED_KEYS = new Set([
   "A", "C", "V", "X", "Y", "Z",
   // Zoom accelerators: fixed app shortcuts on desktop, browser zoom on web.
   "Equals", "Plus", "Minus", "Underscore", "0",
+  // Bracket accelerators: fixed history back/forward (Cmd/Ctrl+[ / ]) and tab
+  // switching (Cmd/Ctrl+Shift+[ / ]) on desktop, browser back/forward on web.
+  // The shifted glyphs "{"/"}" are what a recorder captures for the tab-switch
+  // variant, so reserve them too — otherwise a configurable action bound there
+  // would be silently shadowed by the fixed shortcut.
+  "[", "]", "{", "}",
 ]);
 
 // Accelerators owned by the browser UI around a tab: print, address bar,

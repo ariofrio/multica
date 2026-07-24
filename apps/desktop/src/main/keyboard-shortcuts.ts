@@ -38,12 +38,23 @@ const ZOOM_MAX = 4.5;
  * and every layout.
  */
 /**
- * Result of handleAppShortcut:
+ * Result of handleAppShortcut. Anything other than `false` means the caller
+ * should `preventDefault()`; the string variants additionally name an IPC the
+ * caller must forward to the renderer (the main process has no access to the
+ * tab store or per-tab history — those live in the renderer):
  * - `false`: not handled, let Electron continue
  * - `true`: handled (preventDefault), no further action
- * - `"close-tab"`: Cmd/Ctrl+W intercepted — caller should send IPC to renderer
+ * - `"close-tab"`: Cmd/Ctrl+W — close the active tab
+ * - `"prev-tab"` / `"next-tab"`: Cmd/Ctrl+Shift+[ / ] — switch product tab
+ * - `"history-back"` / `"history-forward"`: Cmd/Ctrl+[ / ] — per-tab history
  */
-export type ShortcutResult = boolean | "close-tab";
+export type ShortcutResult =
+  | boolean
+  | "close-tab"
+  | "prev-tab"
+  | "next-tab"
+  | "history-back"
+  | "history-forward";
 
 export function handleAppShortcut(
   input: ShortcutInput,
@@ -62,6 +73,20 @@ export function handleAppShortcut(
   }
 
   if (!primary || !noSecondaryModifiers) return false;
+
+  // Cmd/Ctrl + "[" / "]" → per-tab history back/forward.
+  // Cmd/Ctrl + Shift + "[" / "]" → previous/next product tab.
+  // With Shift held the physical bracket keys report their shifted glyphs
+  // ("{" / "}") on a US layout — same layout assumption the zoom cases above
+  // make for "+"/"_" — so accept either form under each branch. These are
+  // fixed desktop bindings (the standard browser/editor brackets); the
+  // renderer owns the actual tab and history state, so we only signal intent.
+  const leftBracket = input.key === "[" || input.key === "{";
+  const rightBracket = input.key === "]" || input.key === "}";
+  if (leftBracket || rightBracket) {
+    if (input.shift) return leftBracket ? "prev-tab" : "next-tab";
+    return leftBracket ? "history-back" : "history-forward";
+  }
 
   // Cmd/Ctrl + "=" (unshifted) or "+" (Shift+=) → zoom in.
   if (

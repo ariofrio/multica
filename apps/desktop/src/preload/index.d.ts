@@ -1,6 +1,7 @@
 import { ElectronAPI } from "@electron-toolkit/preload";
 import type { RuntimeConfigResult } from "../shared/runtime-config";
 import type { NavigationGesture } from "../shared/navigation-gestures";
+import type { TabSelectionDirection } from "../shared/tab-selection";
 import type { RendererRouteContextInput } from "../shared/renderer-route-context";
 import type { FreezeBreadcrumb } from "../shared/freeze-breadcrumb";
 import type {
@@ -98,6 +99,11 @@ interface DesktopAPI {
   /** Listen for Cmd/Ctrl+W tab-close requests from the main process.
    *  Returns an unsubscribe function. */
   onCloseActiveTab: (callback: () => void) => () => void;
+  /** Listen for Cmd/Ctrl+Shift+[ / ] tab-switch requests from the main
+   *  process. Returns an unsubscribe function. */
+  onSelectRelativeTab: (
+    callback: (direction: TabSelectionDirection) => void,
+  ) => () => void;
   /** Ask the main process to close the window. */
   closeWindow: () => void;
   /** Open an issue-detail tab in a dedicated native window. */

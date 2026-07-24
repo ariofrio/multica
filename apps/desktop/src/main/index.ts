@@ -11,6 +11,8 @@ import { openExternalSafely, downloadURLSafely } from "./external-url";
 import { installContextMenu } from "./context-menu";
 import { handleAppShortcut } from "./keyboard-shortcuts";
 import { installNavigationGestures } from "./navigation-gestures";
+import { NAVIGATION_GESTURE_CHANNEL } from "../shared/navigation-gestures";
+import { TAB_SELECTION_CHANNEL } from "../shared/tab-selection";
 import { installNavigationGuard } from "./navigation-guard";
 import { getAppVersion } from "./app-version";
 import { loadRuntimeConfig } from "./runtime-config-loader";
@@ -293,6 +295,20 @@ function installWindowShortcutHandler(window: BrowserWindow): void {
     if (result === "close-tab") {
       event.preventDefault();
       window.webContents.send("tab:close-active");
+    } else if (result === "prev-tab" || result === "next-tab") {
+      event.preventDefault();
+      window.webContents.send(
+        TAB_SELECTION_CHANNEL,
+        result === "prev-tab" ? "previous" : "next",
+      );
+    } else if (result === "history-back" || result === "history-forward") {
+      // Reuse the swipe channel: the renderer already routes it to the active
+      // tab's goBack/goForward, so keyboard history nav needs no new listener.
+      event.preventDefault();
+      window.webContents.send(
+        NAVIGATION_GESTURE_CHANNEL,
+        result === "history-back" ? "back" : "forward",
+      );
     } else if (result) {
       event.preventDefault();
     }
