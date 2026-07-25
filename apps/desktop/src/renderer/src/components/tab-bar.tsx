@@ -208,7 +208,13 @@ function SortableTabItem({
     zIndex: isDragging ? 20 : undefined,
   } as React.CSSProperties;
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // A pointer click must not leave the tab holding keyboard focus. If it
+    // did, the next keydown (e.g. the tab/history shortcuts) flips the
+    // browser's focus-visible heuristic and paints a focus ring on a tab the
+    // user only clicked. Dropping focus keeps the ring for real keyboard
+    // navigation (Tab) only.
+    e.currentTarget.blur();
     if (isActive) return;
     setActiveTab(tab.id);
   };
@@ -264,6 +270,10 @@ function SortableTabItem({
       className={cn(
         "group relative flex size-full min-w-0 items-center gap-1.5 px-2.5 text-xs transition-colors",
         "select-none cursor-default",
+        // Replace the global default focus outline (which draws OUTSIDE the
+        // box and floats on top of the tab shape) with an inset ring that
+        // hugs the tab, shown only for keyboard focus.
+        "rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60",
         isActive
           ? "font-medium text-foreground"
           : "text-muted-foreground hover:text-sidebar-accent-foreground",

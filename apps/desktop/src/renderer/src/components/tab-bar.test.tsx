@@ -507,3 +507,25 @@ describe("TabBar context menu", () => {
   });
 
 });
+
+describe("TabBar focus handling", () => {
+  it("drops keyboard focus after a pointer click so a later shortcut can't paint a stray focus ring", () => {
+    const { getByLabelText } = render(<TabBar />);
+    const projects = getByLabelText("Projects");
+    projects.focus();
+    expect(document.activeElement).toBe(projects);
+    fireEvent.click(projects);
+    // After a mouse click the tab must not keep DOM focus: otherwise the next
+    // keydown flips the browser's focus-visible heuristic and rings the tab.
+    expect(document.activeElement).not.toBe(projects);
+  });
+  it("suppresses the default browser focus outline in favor of an inset ring that hugs the tab", () => {
+    const { getByLabelText } = render(<TabBar />);
+    const tab = getByLabelText("Projects");
+    // The custom tab button must opt out of the global default outline
+    // (packages/ui base layer) and instead show an INSET focus-visible ring,
+    // so keyboard focus reads as part of the tab rather than floating on top.
+    expect(tab.className).toContain("outline-none");
+    expect(tab.className).toContain("ring-inset");
+  });
+});
