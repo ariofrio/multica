@@ -207,42 +207,67 @@ describe("handleAppShortcut — close tab (Cmd/Ctrl+W)", () => {
   });
 });
 
-describe("handleAppShortcut — history navigation (Cmd/Ctrl+[ / ])", () => {
-  it('returns "history-back" on Cmd+[ (macOS)', () => {
+describe("handleAppShortcut — history navigation (macOS Cmd+[ / ])", () => {
+  it('returns "history-back" on Cmd+[', () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("[", { meta: true }), wc, "darwin")).toBe("history-back");
   });
 
-  it('returns "history-forward" on Cmd+] (macOS)', () => {
+  it('returns "history-forward" on Cmd+]', () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("]", { meta: true }), wc, "darwin")).toBe("history-forward");
   });
 
-  it("maps back/forward on Ctrl+[ / ] (Linux/Windows)", () => {
-    const wc = makeWc();
-    expect(handleAppShortcut(key("[", { control: true }), wc, "linux")).toBe("history-back");
-    expect(handleAppShortcut(key("]", { control: true }), wc, "win32")).toBe("history-forward");
-  });
-
-  it("does not trigger without Cmd/Ctrl", () => {
+  it("does not trigger without Cmd", () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("["), wc, "darwin")).toBe(false);
     expect(handleAppShortcut(key("]"), wc, "darwin")).toBe(false);
   });
 
-  it("does not trigger with an extra secondary modifier", () => {
+  it("does not trigger with an extra modifier", () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("[", { meta: true, alt: true }), wc, "darwin")).toBe(false);
+    expect(handleAppShortcut(key("[", { meta: true, control: true }), wc, "darwin")).toBe(false);
+  });
+
+  it("does not map the macOS brackets on Windows/Linux", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { control: true }), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("]", { control: true }), wc, "linux")).toBe(false);
   });
 });
 
-describe("handleAppShortcut — tab switching (Cmd/Ctrl+Shift+[ / ])", () => {
-  it('returns "prev-tab" on Cmd+Shift+[ (macOS)', () => {
+describe("handleAppShortcut — history navigation (Windows/Linux Alt+←/→)", () => {
+  it('returns "history-back" on Alt+ArrowLeft', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "win32")).toBe("history-back");
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "linux")).toBe("history-back");
+  });
+
+  it('returns "history-forward" on Alt+ArrowRight', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowRight", { alt: true }), wc, "win32")).toBe("history-forward");
+  });
+
+  it("does not trigger without Alt or with extra modifiers", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft"), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true, control: true }), wc, "win32")).toBe(false);
+  });
+
+  it("does not map Alt+arrows on macOS", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "darwin")).toBe(false);
+  });
+});
+
+describe("handleAppShortcut — tab switching (macOS Cmd+Shift+[ / ])", () => {
+  it('returns "prev-tab" on Cmd+Shift+[', () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("[", { meta: true, shift: true }), wc, "darwin")).toBe("prev-tab");
   });
 
-  it('returns "next-tab" on Cmd+Shift+] (macOS)', () => {
+  it('returns "next-tab" on Cmd+Shift+]', () => {
     const wc = makeWc();
     expect(handleAppShortcut(key("]", { meta: true, shift: true }), wc, "darwin")).toBe("next-tab");
   });
@@ -252,10 +277,28 @@ describe("handleAppShortcut — tab switching (Cmd/Ctrl+Shift+[ / ])", () => {
     expect(handleAppShortcut(key("{", { meta: true, shift: true }), wc, "darwin")).toBe("prev-tab");
     expect(handleAppShortcut(key("}", { meta: true, shift: true }), wc, "darwin")).toBe("next-tab");
   });
+});
 
-  it("maps prev/next on Ctrl+Shift+[ / ] (Linux/Windows)", () => {
+describe("handleAppShortcut — tab switching (Windows/Linux Ctrl+PgUp/PgDn)", () => {
+  it('returns "prev-tab" on Ctrl+PageUp', () => {
     const wc = makeWc();
-    expect(handleAppShortcut(key("[", { control: true, shift: true }), wc, "linux")).toBe("prev-tab");
-    expect(handleAppShortcut(key("]", { control: true, shift: true }), wc, "win32")).toBe("next-tab");
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "win32")).toBe("prev-tab");
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "linux")).toBe("prev-tab");
+  });
+
+  it('returns "next-tab" on Ctrl+PageDown', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageDown", { control: true }), wc, "win32")).toBe("next-tab");
+  });
+
+  it("does not trigger without Ctrl or with extra modifiers", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageUp"), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("PageUp", { control: true, shift: true }), wc, "win32")).toBe(false);
+  });
+
+  it("does not map Ctrl+PageUp on macOS", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "darwin")).toBe(false);
   });
 });

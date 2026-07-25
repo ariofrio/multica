@@ -247,12 +247,6 @@ const PRIMARY_RESERVED_KEYS = new Set([
   "A", "C", "V", "X", "Y", "Z",
   // Zoom accelerators: fixed app shortcuts on desktop, browser zoom on web.
   "Equals", "Plus", "Minus", "Underscore", "0",
-  // Bracket accelerators: fixed history back/forward (Cmd/Ctrl+[ / ]) and tab
-  // switching (Cmd/Ctrl+Shift+[ / ]) on desktop, browser back/forward on web.
-  // The shifted glyphs "{"/"}" are what a recorder captures for the tab-switch
-  // variant, so reserve them too — otherwise a configurable action bound there
-  // would be silently shadowed by the fixed shortcut.
-  "[", "]", "{", "}",
 ]);
 
 // Accelerators owned by the browser UI around a tab: print, address bar,
@@ -286,12 +280,20 @@ export function isReservedShortcut(
   if (platform === "macos") {
     if (modifiers.primary && (key === "Space" || key === "Tab" || key === "M" || key === "H")) return true;
     if (modifiers.control && ["Up", "Down", "Left", "Right"].includes(key)) return true;
+    // Fixed desktop history (Cmd+[ / ]) and tab switching (Cmd+Shift+[ / ]).
+    // A Shift recorder captures the shifted glyphs "{" / "}", so reserve both
+    // forms — otherwise a configurable action bound there is silently shadowed.
+    if (modifiers.primary && ["[", "]", "{", "}"].includes(key)) return true;
   } else {
     // Windows/Super shortcuts are owned by the shell/window manager and often
     // never reach the browser. Reject all of them instead of pretending a
     // recorded binding will be dependable.
     if (modifiers.meta) return true;
     if (modifiers.alt && (key === "Tab" || key === "F4")) return true;
+    // Fixed desktop history (Alt+←/→) and tab switching (Ctrl+PgUp/PgDn) —
+    // the platform-native counterparts of the macOS bracket bindings above.
+    if (modifiers.alt && (key === "Left" || key === "Right")) return true;
+    if (modifiers.primary && (key === "PageUp" || key === "PageDown")) return true;
   }
 
   return false;

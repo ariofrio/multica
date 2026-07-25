@@ -45,8 +45,10 @@ const ZOOM_MAX = 4.5;
  * - `false`: not handled, let Electron continue
  * - `true`: handled (preventDefault), no further action
  * - `"close-tab"`: Cmd/Ctrl+W — close the active tab
- * - `"prev-tab"` / `"next-tab"`: Cmd/Ctrl+Shift+[ / ] — switch product tab
- * - `"history-back"` / `"history-forward"`: Cmd/Ctrl+[ / ] — per-tab history
+ * - `"prev-tab"` / `"next-tab"`: switch product tab
+ *   (macOS `Cmd+Shift+[ / ]`; Windows/Linux `Ctrl+PgUp / PgDn`)
+ * - `"history-back"` / `"history-forward"`: per-tab history
+ *   (macOS `Cmd+[ / ]`; Windows/Linux `Alt+← / →`)
  */
 export type ShortcutResult =
   | boolean
@@ -56,14 +58,60 @@ export type ShortcutResult =
   | "history-back"
   | "history-forward";
 
+/**
+ * Tab-switch and per-tab-history chords, using each platform's native
+ * convention rather than a blind Cmd→Ctrl swap (which would put macOS's
+ * bracket keys on Windows, where they mean nothing). Returns the intent to
+ * forward to the renderer, or `null` when the input isn't a navigation chord.
+ *
+ *   macOS:         Cmd+[ / Cmd+]              history back / forward
+ *                  Cmd+Shift+[ / Cmd+Shift+]  previous / next tab
+ *   Windows/Linux: Alt+Left / Alt+Right        history back / forward
+ *                  Ctrl+PageUp / Ctrl+PageDown previous / next tab
+ *
+ * `input.key` follows the DOM `KeyboardEvent.key` values ("ArrowLeft",
+ * "PageUp", …). Each branch demands an exact modifier set so a superset chord
+ * (e.g. Ctrl+Alt+Left) does not trigger navigation.
+ */
+function matchNavigationShortcut(
+  input: ShortcutInput,
+  isMac: boolean,
+): ShortcutResult | null {
+  if (isMac) {
+    // Command only — no Control/Option. Shift selects tab-switch vs history.
+    if (!input.meta || input.control || input.alt) return null;
+    // With Shift the bracket keys report their shifted glyphs ("{" / "}") on a
+    // US layout, mirroring the zoom cases' "+"/"_" assumption — accept either.
+    const leftBracket = input.key === "[" || input.key === "{";
+    const rightBracket = input.key === "]" || input.key === "}";
+    if (leftBracket || rightBracket) {
+      if (input.shift) return leftBracket ? "prev-tab" : "next-tab";
+      return leftBracket ? "history-back" : "history-forward";
+    }
+    return null;
+  }
+
+  // Windows / Linux — history on Alt+arrows, tabs on Ctrl+PageUp/PageDown.
+  if (input.alt && !input.control && !input.meta && !input.shift) {
+    if (input.key === "ArrowLeft") return "history-back";
+    if (input.key === "ArrowRight") return "history-forward";
+  }
+  if (input.control && !input.alt && !input.meta && !input.shift) {
+    if (input.key === "PageUp") return "prev-tab";
+    if (input.key === "PageDown") return "next-tab";
+  }
+  return null;
+}
+
 export function handleAppShortcut(
   input: ShortcutInput,
   webContents: ZoomTarget,
   platform: NodeJS.Platform = process.platform,
 ): ShortcutResult {
   if (input.type !== "keyDown") return false;
-  const primary = platform === "darwin" ? input.meta : input.control;
-  const secondary = platform === "darwin" ? input.control : input.meta;
+  const isMac = platform === "darwin";
+  const primary = isMac ? input.meta : input.control;
+  const secondary = isMac ? input.control : input.meta;
   const noSecondaryModifiers = !secondary && !input.alt;
 
   // Block reload — accidental Cmd+R / Ctrl+R / F5 destroys in-memory state
@@ -72,21 +120,13 @@ export function handleAppShortcut(
     return true;
   }
 
-  if (!primary || !noSecondaryModifiers) return false;
+  // Tab switching & per-tab history, using each platform's native chords.
+  // Handled before the primary-modifier gate below because the Windows/Linux
+  // history binding is Alt+arrow, which carries no Cmd/Ctrl.
+  const navigation = matchNavigationShortcut(input, isMac);
+  if (navigation) return navigation;
 
-  // Cmd/Ctrl + "[" / "]" → per-tab history back/forward.
-  // Cmd/Ctrl + Shift + "[" / "]" → previous/next product tab.
-  // With Shift held the physical bracket keys report their shifted glyphs
-  // ("{" / "}") on a US layout — same layout assumption the zoom cases above
-  // make for "+"/"_" — so accept either form under each branch. These are
-  // fixed desktop bindings (the standard browser/editor brackets); the
-  // renderer owns the actual tab and history state, so we only signal intent.
-  const leftBracket = input.key === "[" || input.key === "{";
-  const rightBracket = input.key === "]" || input.key === "}";
-  if (leftBracket || rightBracket) {
-    if (input.shift) return leftBracket ? "prev-tab" : "next-tab";
-    return leftBracket ? "history-back" : "history-forward";
-  }
+  if (!primary || !noSecondaryModifiers) return false;
 
   // Cmd/Ctrl + "=" (unshifted) or "+" (Shift+=) → zoom in.
   if (
