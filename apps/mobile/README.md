@@ -42,6 +42,7 @@ Everything below is for app developers — you can ignore the rest if you only w
 | `pnpm ios:mobile:device:staging:release` | Full rebuild + install on **USB iPhone**, Release (standalone) | staging |
 | `pnpm ios:mobile:device:prod` | Full rebuild + install on **USB iPhone**, Debug | production |
 | `pnpm ios:mobile:device:prod:release` | Full rebuild + install on **USB iPhone**, Release (standalone) | production |
+| `pnpm ios:mobile:testflight` | Release archive + upload to **TestFlight** (paid team, no USB) | production |
 
 `dev:*` runs Metro only — assumes the matching variant is already installed. `ios:mobile*` does a full native rebuild + install.
 
@@ -92,7 +93,28 @@ Boots the simulator, builds, installs the dev-client. Faster to iterate than a d
 
 ## 7-day signing limit (device only)
 
-A free Apple ID signs builds for **7 days only**, Debug and Release both. After that the app refuses to launch on the iPhone. Plug back into the Mac and re-run the corresponding `ios:mobile:device*` script to re-sign. Simulator builds are unaffected. The only workaround for the device limit is an Apple Developer Program account ($99/yr), which extends to 1 year.
+A free Apple ID signs builds for **7 days only**, Debug and Release both. After that the app refuses to launch on the iPhone. Plug back into the Mac and re-run the corresponding `ios:mobile:device*` script to re-sign. Simulator builds are unaffected. The only workaround for the device limit is an Apple Developer Program account ($99/yr), which extends to 1 year — and unlocks TestFlight, below.
+
+## Distribute via TestFlight
+
+For anyone with an Apple Developer Program team: this replaces USB installs entirely. Testers install from the TestFlight app, builds last 90 days, and nobody needs a Mac.
+
+```bash
+APPLE_TEAM_ID=ABCDE12345 ASC_KEY_ID=XXXXXXXXXX ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+  pnpm ios:mobile:testflight
+```
+
+That archives the production variant with the team's Apple Distribution certificate and uploads it straight to App Store Connect (`xcodebuild -exportArchive` with `destination=upload` — no fastlane, no EAS, no Transporter step).
+
+**One-time setup**, in this order:
+
+1. **Create the app record** — App Store Connect → Apps → **+** → New App. Platform iOS, bundle id `ai.multica.mobile`, and an SKU of your choosing. This step has no CLI equivalent: the App Store Connect API is explicitly [read/update only for app records](https://developer.apple.com/documentation/appstoreconnectapi/apps) ("Don't use this API to create new apps"), so it must be done in the web UI once. The bundle id itself does *not* need pre-registering — `xcodebuild -allowProvisioningUpdates` registers it and creates the distribution profile on the first run.
+2. **Create an App Store Connect API key** — Users and Access → Integrations → **Team Keys** → **+**, role **App Manager**. It must be a *team* key, not an individual key: individual keys can't use the provisioning endpoints, so signing would fail. Apple lets you download the `.p8` exactly once — put it at `~/.appstoreconnect/private_keys/AuthKey_<ASC_KEY_ID>.p8` (or point `ASC_KEY_PATH` at it). Note the Key ID and the Issuer ID shown on that page.
+3. **Answer the export-compliance question** on the first uploaded build in App Store Connect, then add testers under TestFlight → Internal (or External) Testing.
+
+Build numbers come from the commit count on `HEAD`, so each commit uploads cleanly and re-running on the same commit is rejected by Apple rather than shipping two different binaries under one build number. Override with `IOS_BUILD_NUMBER=42`. Marketing version comes from `version` in `app.config.ts`.
+
+Expect 10–20 minutes on a cold build (CocoaPods + React Native from source), plus 5–15 minutes of Apple-side processing before the build shows up in TestFlight.
 
 ## Pointing at a different backend
 

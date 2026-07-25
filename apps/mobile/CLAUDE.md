@@ -155,8 +155,10 @@ Never copy the visual shape of an existing hand-written `components/ui/` compone
 
 - **Main CI** (`.github/workflows/ci.yml`) excludes mobile via `--filter='!@multica/mobile'`. Mobile failures do NOT block web/desktop PRs.
 - **Mobile verify** (`.github/workflows/mobile-verify.yml`): triggered on `apps/mobile/**` or `packages/core/types/**` changes — runs typecheck/lint/test only, no IPA build.
-- **Mobile release** (`.github/workflows/mobile-release.yml`): triggered by `mobile-v*.*.*` tag → `eas build` + `eas submit`.
-- **OTA** — EAS Update for JS-only fixes that don't change the runtime version. Manual / on-demand push to preview/production channels.
+- **TestFlight** (`scripts/testflight.sh`, run via `pnpm ios:mobile:testflight`): archives the production variant locally and uploads it to App Store Connect with `xcodebuild -exportArchive destination=upload`. Requires a paid Apple Developer team plus an App Store Connect **team** API key — see README §"Distribute via TestFlight". Build number = commit count on `HEAD`, fed through `IOS_BUILD_NUMBER` → `ios.buildNumber` in `app.config.ts`.
+- **Not implemented yet**: a CI release workflow (`mobile-release.yml` on a `mobile-v*.*.*` tag), EAS Build / Submit, and EAS Update OTA. There is no `eas.json` and no Expo account wired up; releases are the local script above. Don't cite EAS as the current path.
+
+The one step with no CLI equivalent is creating the App Store Connect app record — Apple's `apps` API is read/update only, so it is a one-time manual action in the web UI. Everything downstream (bundle id registration, distribution profile, upload) is automated by the script.
 
 Mobile release cadence is decoupled from main `v*.*.*` tags (server / CLI / desktop).
 
