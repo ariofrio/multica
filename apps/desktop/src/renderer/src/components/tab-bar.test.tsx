@@ -514,10 +514,24 @@ describe("TabBar focus handling", () => {
     const projects = getByLabelText("Projects");
     projects.focus();
     expect(document.activeElement).toBe(projects);
-    fireEvent.click(projects);
+    // `detail` is the click count — a real pointer click reports >= 1. It must
+    // be set explicitly: fireEvent.click defaults to 0, which is what a
+    // KEYBOARD activation looks like (see the next test).
+    fireEvent.click(projects, { detail: 1 });
     // After a mouse click the tab must not keep DOM focus: otherwise the next
     // keydown flips the browser's focus-visible heuristic and rings the tab.
     expect(document.activeElement).not.toBe(projects);
+  });
+  it("keeps focus when the tab is activated from the keyboard, so the user stays in the tab order", () => {
+    const { getByLabelText } = render(<TabBar />);
+    const projects = getByLabelText("Projects");
+    projects.focus();
+    // Enter / Space on a focused <button> dispatches a click too, marked only
+    // by `detail === 0`. Blurring there would send focus to <body> and make
+    // the user's next Tab restart from the top of the document.
+    fireEvent.click(projects, { detail: 0 });
+    expect(document.activeElement).toBe(projects);
+    expect(state.setActiveTab).toHaveBeenCalledWith("tB");
   });
   it("suppresses the default browser focus outline in favor of an inset ring that hugs the tab", () => {
     const { getByLabelText } = render(<TabBar />);

@@ -209,12 +209,17 @@ function SortableTabItem({
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // A pointer click must not leave the tab holding keyboard focus. If it
+    // A POINTER click must not leave the tab holding keyboard focus. If it
     // did, the next keydown (e.g. the tab/history shortcuts) flips the
     // browser's focus-visible heuristic and paints a focus ring on a tab the
     // user only clicked. Dropping focus keeps the ring for real keyboard
     // navigation (Tab) only.
-    e.currentTarget.blur();
+    //
+    // Keyboard activation must NOT blur: Enter/Space on a focused <button>
+    // also dispatches a click, distinguishable only by `detail === 0` (no
+    // click count). Blurring there would drop the user out of the tab order —
+    // their next Tab would restart from the top of the document.
+    if (e.detail !== 0) e.currentTarget.blur();
     if (isActive) return;
     setActiveTab(tab.id);
   };
