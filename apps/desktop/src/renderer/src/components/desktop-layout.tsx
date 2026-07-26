@@ -4,6 +4,10 @@ import { motion } from "motion/react";
 import { cn } from "@multica/ui/lib/utils";
 import { useTabHistory } from "@/hooks/use-tab-history";
 import {
+  useHistoryNav,
+  useTabSelectionShortcut,
+} from "@/hooks/use-navigation-shortcuts";
+import {
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -85,20 +89,6 @@ function WindowToolbar() {
 
 function SidebarTopSpacer() {
   return <div className={cn("shrink-0", TOP_BAR_HEIGHT_CLASS)} />;
-}
-
-function useNativeNavigationGestures() {
-  const { goBack, goForward } = useTabHistory();
-
-  useEffect(() => {
-    return window.desktopAPI.onNavigationGesture((gesture) => {
-      if (gesture === "back") {
-        goBack();
-      } else {
-        goForward();
-      }
-    });
-  }, [goBack, goForward]);
 }
 
 // The main area's top bar doubles as a window drag region. When the sidebar
@@ -207,7 +197,8 @@ function DesktopInboxBridge() {
 
 export function DesktopShell() {
   useInternalLinkHandler();
-  useNativeNavigationGestures();
+  useHistoryNav();
+  useTabSelectionShortcut();
 
   // Reactive read of current workspace slug from the platform singleton.
   // On first mount, slug is null until WorkspaceRouteLayout (inside the tab

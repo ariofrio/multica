@@ -40,6 +40,8 @@ const KEY_TOKENS: Record<string, Omit<ShortcutToken, "id">> = {
   Right: { label: "Right Arrow", icon: ArrowRight },
   Space: { label: "Space", icon: Space },
   Tab: { label: "Tab", icon: ArrowRightToLine },
+  PageUp: { label: "Page Up", text: "PgUp" },
+  PageDown: { label: "Page Down", text: "PgDn" },
   Escape: { label: "Esc" },
   Plus: { label: "+" },
   Minus: { label: "−" },

@@ -764,3 +764,54 @@ describe("mergePersistedTabs (rehydration, MUL-4370)", () => {
     expect(tab.url).toBe("/acme/squads");
   });
 });
+
+describe("selectAdjacentTab", () => {
+  function seedThreeTabs() {
+    const store = useTabStore.getState();
+    store.switchWorkspace("acme"); // default tab at index 0
+    store.addTab("/acme/projects", "Projects");
+    store.addTab("/acme/agents", "Agents");
+    return useTabStore.getState().byWorkspace.acme;
+  }
+
+  it("moves to the next tab", () => {
+    const group = seedThreeTabs();
+    useTabStore.getState().setActiveTab(group.tabs[0].id);
+    useTabStore.getState().selectAdjacentTab("next");
+    expect(useTabStore.getState().byWorkspace.acme.activeTabId).toBe(group.tabs[1].id);
+  });
+
+  it("moves to the previous tab", () => {
+    const group = seedThreeTabs();
+    useTabStore.getState().setActiveTab(group.tabs[2].id);
+    useTabStore.getState().selectAdjacentTab("previous");
+    expect(useTabStore.getState().byWorkspace.acme.activeTabId).toBe(group.tabs[1].id);
+  });
+
+  it("wraps from the last tab to the first on next", () => {
+    const group = seedThreeTabs();
+    useTabStore.getState().setActiveTab(group.tabs[2].id);
+    useTabStore.getState().selectAdjacentTab("next");
+    expect(useTabStore.getState().byWorkspace.acme.activeTabId).toBe(group.tabs[0].id);
+  });
+
+  it("wraps from the first tab to the last on previous", () => {
+    const group = seedThreeTabs();
+    useTabStore.getState().setActiveTab(group.tabs[0].id);
+    useTabStore.getState().selectAdjacentTab("previous");
+    expect(useTabStore.getState().byWorkspace.acme.activeTabId).toBe(group.tabs[2].id);
+  });
+
+  it("is a no-op with a single tab", () => {
+    const store = useTabStore.getState();
+    store.switchWorkspace("acme");
+    const before = useTabStore.getState().byWorkspace.acme.activeTabId;
+    store.selectAdjacentTab("next");
+    expect(useTabStore.getState().byWorkspace.acme.activeTabId).toBe(before);
+  });
+
+  it("is a no-op with no active workspace", () => {
+    expect(() => useTabStore.getState().selectAdjacentTab("next")).not.toThrow();
+    expect(useTabStore.getState().activeWorkspaceSlug).toBeNull();
+  });
+});

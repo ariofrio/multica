@@ -11,10 +11,15 @@ import {
   type RendererRouteContextInput,
 } from "../shared/renderer-route-context";
 import {
-  isNavigationGesture,
-  NAVIGATION_GESTURE_CHANNEL,
-  type NavigationGesture,
-} from "../shared/navigation-gestures";
+  isHistoryNavDirection,
+  HISTORY_NAV_CHANNEL,
+  type HistoryNavDirection,
+} from "../shared/history-nav";
+import {
+  isTabSelectionDirection,
+  TAB_SELECTION_CHANNEL,
+  type TabSelectionDirection,
+} from "../shared/tab-selection";
 import {
   readDesktopWindowContext,
   type IssueWindowRequest,
@@ -185,14 +190,15 @@ const desktopAPI = {
       issueKey: string;
     }) => void,
   ) => subscribeToMainRendererChannel("inbox:open", callback),
-  /** Listen for native macOS back/forward swipe gestures. */
-  onNavigationGesture: (callback: (gesture: NavigationGesture) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, gesture: unknown) => {
-      if (isNavigationGesture(gesture)) callback(gesture);
+  /** Listen for per-tab history back/forward requests — a macOS trackpad
+   *  swipe or the history shortcuts. Returns an unsubscribe fn. */
+  onHistoryNav: (callback: (direction: HistoryNavDirection) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => {
+      if (isHistoryNavDirection(direction)) callback(direction);
     };
-    ipcRenderer.on(NAVIGATION_GESTURE_CHANNEL, handler);
+    ipcRenderer.on(HISTORY_NAV_CHANNEL, handler);
     return () => {
-      ipcRenderer.removeListener(NAVIGATION_GESTURE_CHANNEL, handler);
+      ipcRenderer.removeListener(HISTORY_NAV_CHANNEL, handler);
     };
   },
   /** Report the renderer's memory-router path for recovery diagnostics. */
@@ -212,6 +218,19 @@ const desktopAPI = {
     ipcRenderer.on("tab:close-active", handler);
     return () => {
       ipcRenderer.removeListener("tab:close-active", handler);
+    };
+  },
+  /** Listen for tab-switch requests from the main process. Returns an
+   *  unsubscribe fn. */
+  onSelectRelativeTab: (
+    callback: (direction: TabSelectionDirection) => void,
+  ) => {
+    const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => {
+      if (isTabSelectionDirection(direction)) callback(direction);
+    };
+    ipcRenderer.on(TAB_SELECTION_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(TAB_SELECTION_CHANNEL, handler);
     };
   },
   /** Ask the main process to close the window (used after closing the last tab). */

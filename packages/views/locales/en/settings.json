@@ -86,8 +86,12 @@
     },
     "fixed": {
       "title": "Fixed system shortcuts",
-      "description": "Window and accessibility shortcuts stay fixed so they remain reliable. Zoom and tab controls apply to the desktop app.",
+      "description": "Window and accessibility shortcuts stay fixed so they remain reliable. Zoom, tab, and history controls apply to the desktop app.",
       "close_tab": "Close active tab",
+      "prev_tab": "Previous tab",
+      "next_tab": "Next tab",
+      "history_back": "Back",
+      "history_forward": "Forward",
       "zoom_in": "Zoom in",
       "zoom_out": "Zoom out",
       "reset_zoom": "Reset zoom",

@@ -18,6 +18,7 @@ import { cn } from "@multica/ui/lib/utils";
 import {
   findShortcutConflict,
   createShortcutChord,
+  getShortcutPlatform,
   isReservedShortcut,
   isShortcutAllowedForAction,
   isPlainShortcut,
@@ -47,6 +48,32 @@ type CaptureError =
   | { kind: "unsafe" }
   | null;
 
+// Mirrors the fixed bindings in apps/desktop `handleAppShortcut`. Resolved at
+// RENDER time, like every other row here: the authoritative OS reaches
+// `configureShortcutPlatform` from CoreProvider's first render, so a
+// module-level snapshot would read the navigator fallback instead and could
+// show keys handleAppShortcut does not bind on this platform.
+function fixedNavShortcuts(): Record<
+  "prevTab" | "nextTab" | "historyBack" | "historyForward",
+  ShortcutChord
+> {
+  const isMac = getShortcutPlatform() === "macos";
+  return {
+    prevTab: isMac
+      ? createShortcutChord("[", { primary: true, shift: true })
+      : createShortcutChord("PageUp", { primary: true }),
+    nextTab: isMac
+      ? createShortcutChord("]", { primary: true, shift: true })
+      : createShortcutChord("PageDown", { primary: true }),
+    historyBack: isMac
+      ? createShortcutChord("[", { primary: true })
+      : createShortcutChord("Left", { alt: true }),
+    historyForward: isMac
+      ? createShortcutChord("]", { primary: true })
+      : createShortcutChord("Right", { alt: true }),
+  };
+}
+
 export function KeyboardShortcutsTab() {
   const { t } = useT("settings");
   const [query, setQuery] = useState("");
@@ -57,6 +84,7 @@ export function KeyboardShortcutsTab() {
   const setShortcut = useShortcutStore((state) => state.setShortcut);
   const resetShortcut = useShortcutStore((state) => state.resetShortcut);
   const resetAll = useShortcutStore((state) => state.resetAll);
+  const fixedNav = fixedNavShortcuts();
 
   const visibleActions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -196,6 +224,10 @@ export function KeyboardShortcutsTab() {
       >
         <SettingsCard>
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.close_tab)} shortcut={createShortcutChord("W", { primary: true })} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.prev_tab)} shortcut={fixedNav.prevTab} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.next_tab)} shortcut={fixedNav.nextTab} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_back)} shortcut={fixedNav.historyBack} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_forward)} shortcut={fixedNav.historyForward} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.zoom_in)} shortcut={createShortcutChord("Plus", { primary: true })} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.zoom_out)} shortcut={createShortcutChord("Minus", { primary: true })} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.reset_zoom)} shortcut={createShortcutChord("0", { primary: true })} />

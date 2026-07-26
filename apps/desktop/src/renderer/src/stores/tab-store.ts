@@ -144,6 +144,11 @@ interface TabStore {
    * path that "jumps" to a tab belonging to a non-active workspace.
    */
   setActiveTab: (tabId: string) => void;
+  /**
+   * Activate the previous/next tab in the active workspace group, wrapping
+   * around at the ends. Drives the tab-switch shortcuts.
+   */
+  selectAdjacentTab: (direction: "previous" | "next") => void;
   /** Patch display metadata of a tab (title-sync). Finds across groups. */
   updateTab: (tabId: string, patch: Partial<Pick<TabSession, "title">>) => void;
   /**
@@ -553,6 +558,18 @@ export const useTabStore = create<TabStore>()(
             [slug]: { ...group, activeTabId: tabId },
           },
         });
+      },
+
+      selectAdjacentTab(direction) {
+        const { byWorkspace, activeWorkspaceSlug } = get();
+        if (!activeWorkspaceSlug) return;
+        const group = byWorkspace[activeWorkspaceSlug];
+        if (!group || group.tabs.length < 2) return;
+        const index = group.tabs.findIndex((t) => t.id === group.activeTabId);
+        if (index < 0) return;
+        const count = group.tabs.length;
+        const delta = direction === "next" ? 1 : -1;
+        get().setActiveTab(group.tabs[(index + delta + count) % count].id);
       },
 
       updateTab(tabId, patch) {

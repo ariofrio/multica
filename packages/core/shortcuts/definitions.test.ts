@@ -189,6 +189,46 @@ describe("keyboard shortcut definitions", () => {
     ).toBe(true);
   });
 
+  it("reserves the platform-native tab/history bindings per OS", () => {
+    // macOS: brackets (Cmd+[ / ]) and their shifted glyphs for tab-switch.
+    for (const key of ["[", "]", "{", "}"]) {
+      expect(
+        isReservedShortcut(createShortcutChord(key, { primary: true }), "macos", "desktop"),
+      ).toBe(true);
+    }
+    // Windows/Linux: Alt+←/→ history and Ctrl+PgUp/PgDn tab-switch.
+    for (const platform of ["windows", "linux"] as const) {
+      expect(isReservedShortcut(createShortcutChord("Left", { alt: true }), platform, "desktop")).toBe(true);
+      expect(isReservedShortcut(createShortcutChord("Right", { alt: true }), platform, "desktop")).toBe(true);
+      expect(isReservedShortcut(createShortcutChord("PageUp", { primary: true }), platform, "desktop")).toBe(true);
+      expect(isReservedShortcut(createShortcutChord("PageDown", { primary: true }), platform, "desktop")).toBe(true);
+      // The macOS brackets are NOT the Windows binding, so they stay recordable there.
+      expect(isReservedShortcut(createShortcutChord("[", { primary: true }), platform, "desktop")).toBe(false);
+    }
+  });
+
+  it("leaves superset chords recordable, since handleAppShortcut ignores them", () => {
+    // handleAppShortcut bails on the bracket chords once Control or Option
+    // joins, so reserving those would block a recording nothing can shadow.
+    for (const extra of [{ control: true }, { alt: true }]) {
+      expect(
+        isReservedShortcut(
+          createShortcutChord("[", { primary: true, ...extra }),
+          "macos",
+          "desktop",
+        ),
+      ).toBe(false);
+    }
+    for (const platform of ["windows", "linux"] as const) {
+      expect(
+        isReservedShortcut(createShortcutChord("Left", { alt: true, control: true }), platform, "desktop"),
+      ).toBe(false);
+      expect(
+        isReservedShortcut(createShortcutChord("PageUp", { primary: true, shift: true }), platform, "desktop"),
+      ).toBe(false);
+    }
+  });
+
   it("allows recording bare Cmd/Ctrl+P for an action on desktop only", () => {
     const cmdP = createShortcutChord("P", { primary: true });
     expect(isShortcutAllowedForAction("openSearch", cmdP, "macos", "desktop")).toBe(true);

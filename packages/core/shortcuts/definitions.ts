@@ -280,12 +280,33 @@ export function isReservedShortcut(
   if (platform === "macos") {
     if (modifiers.primary && (key === "Space" || key === "Tab" || key === "M" || key === "H")) return true;
     if (modifiers.control && ["Up", "Down", "Left", "Right"].includes(key)) return true;
+    // Fixed desktop history (Cmd+[ / ]) and tab switching (Cmd+Shift+[ / ]).
+    // A Shift recorder captures the shifted glyphs "{" / "}", so reserve both
+    // forms — otherwise a configurable action bound there is silently shadowed.
+    // Matches handleAppShortcut's exact modifier set: it ignores the chord
+    // once Control or Option joins, so those supersets stay recordable.
+    if (
+      modifiers.primary &&
+      !modifiers.control &&
+      !modifiers.alt &&
+      ["[", "]", "{", "}"].includes(key)
+    ) {
+      return true;
+    }
   } else {
     // Windows/Super shortcuts are owned by the shell/window manager and often
     // never reach the browser. Reject all of them instead of pretending a
     // recorded binding will be dependable.
     if (modifiers.meta) return true;
     if (modifiers.alt && (key === "Tab" || key === "F4")) return true;
+    // Fixed desktop history (Alt+←/→) and tab switching (Ctrl+PgUp/PgDn) —
+    // the platform-native counterparts of the macOS bracket bindings above.
+    if (modifiers.alt && !modifiers.control && !modifiers.shift && (key === "Left" || key === "Right")) {
+      return true;
+    }
+    if (modifiers.primary && !modifiers.alt && !modifiers.shift && (key === "PageUp" || key === "PageDown")) {
+      return true;
+    }
   }
 
   return false;

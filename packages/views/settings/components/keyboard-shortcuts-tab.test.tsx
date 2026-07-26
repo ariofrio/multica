@@ -168,3 +168,43 @@ describe("KeyboardShortcutsTab", () => {
     );
   });
 });
+
+/** Keycaps of the named fixed row, as their accessible titles ("Ctrl", "Page Up"). */
+function fixedRowKeys(label: string): string[] {
+  let node: HTMLElement | null = screen.getByText(label);
+  while (node && node.querySelectorAll("[title]").length === 0) {
+    node = node.parentElement;
+  }
+  return Array.from(node?.querySelectorAll("[title]") ?? []).map(
+    (cap) => cap.getAttribute("title") ?? "",
+  );
+}
+
+// The configured platform must win over the navigator fallback, or Windows
+// users see the macOS brackets that handleAppShortcut ignores there.
+describe("KeyboardShortcutsTab fixed tab/history shortcuts", () => {
+  afterEach(() => {
+    cleanup();
+    configureShortcutPlatform(null);
+  });
+
+  it("shows the Windows/Linux native keys when the configured platform is windows", () => {
+    configureShortcutPlatform("windows");
+    renderWithI18n(<KeyboardShortcutsTab />);
+
+    expect(fixedRowKeys("Previous tab")).toEqual(["Ctrl", "Page Up"]);
+    expect(fixedRowKeys("Next tab")).toEqual(["Ctrl", "Page Down"]);
+    expect(fixedRowKeys("Back")).toEqual(["Alt", "Left Arrow"]);
+    expect(fixedRowKeys("Forward")).toEqual(["Alt", "Right Arrow"]);
+  });
+
+  it("shows the macOS bracket keys when the configured platform is macos", () => {
+    configureShortcutPlatform("macos");
+    renderWithI18n(<KeyboardShortcutsTab />);
+
+    expect(fixedRowKeys("Previous tab")).toEqual(["Command", "Shift", "["]);
+    expect(fixedRowKeys("Next tab")).toEqual(["Command", "Shift", "]"]);
+    expect(fixedRowKeys("Back")).toEqual(["Command", "["]);
+    expect(fixedRowKeys("Forward")).toEqual(["Command", "]"]);
+  });
+});

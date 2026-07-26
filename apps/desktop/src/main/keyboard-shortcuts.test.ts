@@ -206,3 +206,130 @@ describe("handleAppShortcut — close tab (Cmd/Ctrl+W)", () => {
     ).toBe(true);
   });
 });
+
+describe("handleAppShortcut — history navigation (macOS Cmd+[ / ])", () => {
+  it('returns "history-back" on Cmd+[', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { meta: true }), wc, "darwin")).toBe("history-back");
+  });
+
+  it('returns "history-forward" on Cmd+]', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("]", { meta: true }), wc, "darwin")).toBe("history-forward");
+  });
+
+  it("does not trigger without Cmd", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("["), wc, "darwin")).toBe(false);
+    expect(handleAppShortcut(key("]"), wc, "darwin")).toBe(false);
+  });
+
+  it("does not trigger with an extra modifier", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { meta: true, alt: true }), wc, "darwin")).toBe(false);
+    expect(handleAppShortcut(key("[", { meta: true, control: true }), wc, "darwin")).toBe(false);
+  });
+
+  it("does not map the macOS brackets on Windows/Linux", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { control: true }), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("]", { control: true }), wc, "linux")).toBe(false);
+  });
+});
+
+describe("handleAppShortcut — history navigation (Windows/Linux Alt+←/→)", () => {
+  it('returns "history-back" on Alt+ArrowLeft', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "win32")).toBe("history-back");
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "linux")).toBe("history-back");
+  });
+
+  it('returns "history-forward" on Alt+ArrowRight', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowRight", { alt: true }), wc, "win32")).toBe("history-forward");
+  });
+
+  it("does not trigger without Alt or with extra modifiers", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft"), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true, control: true }), wc, "win32")).toBe(false);
+  });
+
+  it("does not map Alt+arrows on macOS", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "darwin")).toBe(false);
+  });
+});
+
+describe("handleAppShortcut — tab switching (macOS Cmd+Shift+[ / ])", () => {
+  it('returns "prev-tab" on Cmd+Shift+[', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { meta: true, shift: true }), wc, "darwin")).toBe("prev-tab");
+  });
+
+  it('returns "next-tab" on Cmd+Shift+]', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("]", { meta: true, shift: true }), wc, "darwin")).toBe("next-tab");
+  });
+
+  it("accepts the shifted glyphs { and } (US layout)", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("{", { meta: true, shift: true }), wc, "darwin")).toBe("prev-tab");
+    expect(handleAppShortcut(key("}", { meta: true, shift: true }), wc, "darwin")).toBe("next-tab");
+  });
+});
+
+describe("handleAppShortcut — tab switching (Windows/Linux Ctrl+PgUp/PgDn)", () => {
+  it('returns "prev-tab" on Ctrl+PageUp', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "win32")).toBe("prev-tab");
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "linux")).toBe("prev-tab");
+  });
+
+  it('returns "next-tab" on Ctrl+PageDown', () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageDown", { control: true }), wc, "win32")).toBe("next-tab");
+  });
+
+  it("does not trigger without Ctrl or with extra modifiers", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageUp"), wc, "win32")).toBe(false);
+    expect(handleAppShortcut(key("PageUp", { control: true, shift: true }), wc, "win32")).toBe(false);
+  });
+
+  it("does not map Ctrl+PageUp on macOS", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "darwin")).toBe(false);
+  });
+});
+
+describe("handleAppShortcut — issue-window surface", () => {
+  it("leaves the navigation chords unclaimed", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { meta: true }), wc, "darwin", "issue")).toBe(false);
+    expect(handleAppShortcut(key("]", { meta: true, shift: true }), wc, "darwin", "issue")).toBe(false);
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "win32", "issue")).toBe(false);
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "win32", "issue")).toBe(false);
+  });
+
+  it("still blocks reload and still zooms", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("r", { meta: true }), wc, "darwin", "issue")).toBe(true);
+    expect(handleAppShortcut(key("=", { meta: true }), wc, "darwin", "issue")).toBe(true);
+    expect(wc.currentLevel()).toBeGreaterThan(0);
+  });
+});
+
+describe("handleAppShortcut — navigation auto-repeat", () => {
+  it("repeats tab and history navigation, unlike Cmd+W", () => {
+    const wc = makeWc();
+    const held = { ...key("]", { meta: true }), isAutoRepeat: true };
+    expect(handleAppShortcut(held, wc, "darwin")).toBe("history-forward");
+    expect(
+      handleAppShortcut({ ...key("PageDown", { control: true }), isAutoRepeat: true }, wc, "win32"),
+    ).toBe("next-tab");
+    expect(
+      handleAppShortcut({ ...key("w", { meta: true }), isAutoRepeat: true }, wc, "darwin"),
+    ).toBe(true);
+  });
+});

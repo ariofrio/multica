@@ -1,6 +1,7 @@
 import { ElectronAPI } from "@electron-toolkit/preload";
 import type { RuntimeConfigResult } from "../shared/runtime-config";
-import type { NavigationGesture } from "../shared/navigation-gestures";
+import type { HistoryNavDirection } from "../shared/history-nav";
+import type { TabSelectionDirection } from "../shared/tab-selection";
 import type { RendererRouteContextInput } from "../shared/renderer-route-context";
 import type { FreezeBreadcrumb } from "../shared/freeze-breadcrumb";
 import type {
@@ -65,8 +66,9 @@ interface DesktopAPI {
       issueKey: string;
     }) => void,
   ) => () => void;
-  /** Listen for native macOS back/forward swipe gestures. Returns an unsubscribe function. */
-  onNavigationGesture: (callback: (gesture: NavigationGesture) => void) => () => void;
+  /** Listen for per-tab history back/forward requests (macOS swipe or the
+   *  Cmd/Ctrl+[ / ] keyboard shortcuts). Returns an unsubscribe function. */
+  onHistoryNav: (callback: (direction: HistoryNavDirection) => void) => () => void;
   /** Report the renderer's memory-router path for recovery diagnostics. */
   setRendererRouteContext: (context: RendererRouteContextInput) => void;
   /** Open the OS folder picker and return the chosen absolute path.
@@ -98,6 +100,11 @@ interface DesktopAPI {
   /** Listen for Cmd/Ctrl+W tab-close requests from the main process.
    *  Returns an unsubscribe function. */
   onCloseActiveTab: (callback: () => void) => () => void;
+  /** Listen for Cmd/Ctrl+Shift+[ / ] tab-switch requests from the main
+   *  process. Returns an unsubscribe function. */
+  onSelectRelativeTab: (
+    callback: (direction: TabSelectionDirection) => void,
+  ) => () => void;
   /** Ask the main process to close the window. */
   closeWindow: () => void;
   /** Open an issue-detail tab in a dedicated native window. */

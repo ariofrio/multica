@@ -9,7 +9,11 @@ import { setupDaemonManager } from "./daemon-manager";
 import { setupLocalDirectory } from "./local-directory";
 import { openExternalSafely, downloadURLSafely } from "./external-url";
 import { installContextMenu } from "./context-menu";
-import { handleAppShortcut } from "./keyboard-shortcuts";
+import {
+  handleAppShortcut,
+  type WindowSurface,
+} from "./keyboard-shortcuts";
+import { dispatchShortcutResult } from "./shortcut-dispatch";
 import { installNavigationGestures } from "./navigation-gestures";
 import { installNavigationGuard } from "./navigation-guard";
 import { getAppVersion } from "./app-version";
@@ -287,13 +291,18 @@ function installLocaleRefresh(window: BrowserWindow): void {
   });
 }
 
-function installWindowShortcutHandler(window: BrowserWindow): void {
+function installWindowShortcutHandler(
+  window: BrowserWindow,
+  surface: WindowSurface,
+): void {
   window.webContents.on("before-input-event", (event, input) => {
-    const result = handleAppShortcut(input, window.webContents);
-    if (result === "close-tab") {
-      event.preventDefault();
-      window.webContents.send("tab:close-active");
-    } else if (result) {
+    const result = handleAppShortcut(
+      input,
+      window.webContents,
+      process.platform,
+      surface,
+    );
+    if (dispatchShortcutResult(result, window.webContents)) {
       event.preventDefault();
     }
   });
@@ -400,7 +409,7 @@ function createWindow(): BrowserWindow {
 
   // Calling preventDefault in the shared shortcut handler prevents both the
   // renderer keydown and the application-menu accelerator from double-firing.
-  installWindowShortcutHandler(window);
+  installWindowShortcutHandler(window, "shell");
 
   // Dev-mode renderer diagnostics. When the renderer crashes hard enough
   // that DevTools can't be opened (white screen with no clickable surface),
@@ -512,7 +521,7 @@ function createIssueWindow(context: IssueWindowContext): void {
     void openExternalSafely(details.url);
     return { action: "deny" };
   });
-  installWindowShortcutHandler(window);
+  installWindowShortcutHandler(window, "issue");
 
   const initialRouteContext = sanitizeRendererRouteContext({
     surface: "tab",

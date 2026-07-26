@@ -208,7 +208,13 @@ function SortableTabItem({
     zIndex: isDragging ? 20 : undefined,
   } as React.CSSProperties;
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // A pointer click must not leave the tab focused, or the next keydown
+    // flips the browser's focus-visible heuristic and rings a tab the user
+    // only clicked. Enter/Space dispatch a click too and must keep focus,
+    // else the user's next Tab restarts from the top of the document —
+    // `detail` (the click count) is the only thing separating the two.
+    if (e.detail !== 0) e.currentTarget.blur();
     if (isActive) return;
     setActiveTab(tab.id);
   };
@@ -257,6 +263,7 @@ function SortableTabItem({
       {...listeners}
       onClick={handleClick}
       aria-label={tab.pinned ? `${title} (pinned)` : title}
+      aria-current={isActive ? "page" : undefined}
       data-tab-active={isActive ? "true" : undefined}
       data-tab-entering={isEntering ? "true" : undefined}
       title={tab.pinned ? `${title} (pinned)` : undefined}
@@ -264,6 +271,10 @@ function SortableTabItem({
       className={cn(
         "group relative flex size-full min-w-0 items-center gap-1.5 px-2.5 text-xs transition-colors",
         "select-none cursor-default",
+        // Replace the global default focus outline (which draws OUTSIDE the
+        // box and floats on top of the tab shape) with an inset ring that
+        // hugs the tab, shown only for keyboard focus.
+        "rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60",
         isActive
           ? "font-medium text-foreground"
           : "text-muted-foreground hover:text-sidebar-accent-foreground",
@@ -507,6 +518,25 @@ function NewTabButton() {
   );
 }
 
+/**
+ * Title to mirror into a polite live region. A shortcut-driven tab switch
+ * moves neither focus nor the reading cursor, so without this assistive tech
+ * has nothing to report. Stays empty until the active tab actually changes —
+ * announcing the initial tab on mount would talk over the page load.
+ */
+function useActiveTabAnnouncement(activeTabId: string, title: string): string {
+  const [announcement, setAnnouncement] = useState("");
+  const previousActiveIdRef = useRef(activeTabId);
+
+  useEffect(() => {
+    if (previousActiveIdRef.current === activeTabId) return;
+    previousActiveIdRef.current = activeTabId;
+    setAnnouncement(title);
+  }, [activeTabId, title]);
+
+  return announcement;
+}
+
 export function TabBar() {
   const group = useActiveGroup();
   const moveTab = useTabStore((s) => s.moveTab);
@@ -544,6 +574,10 @@ export function TabBar() {
     newestTabId && newestTabId !== activeTabId ? newestTabId : null;
   const pinnedCount = tabs.filter((t) => t.pinned).length;
   const unpinnedCount = tabs.length - pinnedCount;
+  const activeTabAnnouncement = useActiveTabAnnouncement(
+    activeTabId,
+    tabs.find((t) => t.id === activeTabId)?.title ?? "",
+  );
 
   useLayoutEffect(() => {
     const currentTabIds = tabOrder ? tabOrder.split("\0") : [];
@@ -603,6 +637,9 @@ export function TabBar() {
 
   return (
     <div className="flex h-full w-full min-w-0 max-w-full items-center justify-start gap-0.5 px-2">
+      <span className="sr-only" aria-live="polite">
+        {activeTabAnnouncement}
+      </span>
       <div className="relative flex h-full min-w-0 flex-1 items-center">
         <DndContext
           sensors={sensors}
