@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron";
 import {
-  NAVIGATION_GESTURE_CHANNEL,
-  navigationGestureFromSwipe,
+  HISTORY_NAV_CHANNEL,
+  historyNavFromSwipe,
 } from "../shared/navigation-gestures";
 
 export function installNavigationGestures(
@@ -11,8 +11,8 @@ export function installNavigationGestures(
   if (platform !== "darwin") return;
 
   win.on("swipe", (_event, direction) => {
-    const gesture = navigationGestureFromSwipe(direction);
+    const gesture = historyNavFromSwipe(direction);
     if (!gesture) return;
-    win.webContents.send(NAVIGATION_GESTURE_CHANNEL, gesture);
+    win.webContents.send(HISTORY_NAV_CHANNEL, gesture);
   });
 }

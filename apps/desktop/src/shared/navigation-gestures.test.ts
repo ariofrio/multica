@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
-  isNavigationGesture,
-  navigationGestureFromSwipe,
+  isHistoryNavDirection,
+  historyNavFromSwipe,
 } from "./navigation-gestures";
 
-describe("navigationGestureFromSwipe", () => {
+describe("historyNavFromSwipe", () => {
   it("maps horizontal macOS swipe directions to browser-style history", () => {
-    expect(navigationGestureFromSwipe("right")).toBe("back");
-    expect(navigationGestureFromSwipe("left")).toBe("forward");
+    expect(historyNavFromSwipe("right")).toBe("back");
+    expect(historyNavFromSwipe("left")).toBe("forward");
   });
 
   it("ignores vertical and unknown directions", () => {
-    expect(navigationGestureFromSwipe("up")).toBeNull();
-    expect(navigationGestureFromSwipe("down")).toBeNull();
-    expect(navigationGestureFromSwipe("sideways")).toBeNull();
+    expect(historyNavFromSwipe("up")).toBeNull();
+    expect(historyNavFromSwipe("down")).toBeNull();
+    expect(historyNavFromSwipe("sideways")).toBeNull();
   });
 });
 
-describe("isNavigationGesture", () => {
+describe("isHistoryNavDirection", () => {
   it("accepts only the renderer navigation gestures", () => {
-    expect(isNavigationGesture("back")).toBe(true);
-    expect(isNavigationGesture("forward")).toBe(true);
-    expect(isNavigationGesture("right")).toBe(false);
-    expect(isNavigationGesture(null)).toBe(false);
+    expect(isHistoryNavDirection("back")).toBe(true);
+    expect(isHistoryNavDirection("forward")).toBe(true);
+    expect(isHistoryNavDirection("right")).toBe(false);
+    expect(isHistoryNavDirection(null)).toBe(false);
   });
 });

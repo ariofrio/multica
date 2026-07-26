@@ -88,12 +88,12 @@ function SidebarTopSpacer() {
   return <div className={cn("shrink-0", TOP_BAR_HEIGHT_CLASS)} />;
 }
 
-function useNativeNavigationGestures() {
+function useHistoryNav() {
   const { goBack, goForward } = useTabHistory();
 
   useEffect(() => {
-    return window.desktopAPI.onNavigationGesture((gesture) => {
-      if (gesture === "back") {
+    return window.desktopAPI.onHistoryNav((direction) => {
+      if (direction === "back") {
         goBack();
       } else {
         goForward();
@@ -218,7 +218,7 @@ function DesktopInboxBridge() {
 
 export function DesktopShell() {
   useInternalLinkHandler();
-  useNativeNavigationGestures();
+  useHistoryNav();
   useTabSelectionShortcut();
 
   // Reactive read of current workspace slug from the platform singleton.

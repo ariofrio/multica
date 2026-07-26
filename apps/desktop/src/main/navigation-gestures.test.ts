@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import { NAVIGATION_GESTURE_CHANNEL } from "../shared/navigation-gestures";
+import { HISTORY_NAV_CHANNEL } from "../shared/navigation-gestures";
 import { installNavigationGestures } from "./navigation-gestures";
 
 function makeWindow() {
@@ -34,10 +34,10 @@ describe("installNavigationGestures", () => {
     installNavigationGestures(win, "darwin");
 
     emitSwipe("right");
-    expect(send).toHaveBeenCalledWith(NAVIGATION_GESTURE_CHANNEL, "back");
+    expect(send).toHaveBeenCalledWith(HISTORY_NAV_CHANNEL, "back");
 
     emitSwipe("left");
-    expect(send).toHaveBeenCalledWith(NAVIGATION_GESTURE_CHANNEL, "forward");
+    expect(send).toHaveBeenCalledWith(HISTORY_NAV_CHANNEL, "forward");
   });
 
   it("ignores non-horizontal swipe directions", () => {

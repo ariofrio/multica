@@ -11,9 +11,9 @@ import {
   type RendererRouteContextInput,
 } from "../shared/renderer-route-context";
 import {
-  isNavigationGesture,
-  NAVIGATION_GESTURE_CHANNEL,
-  type NavigationGesture,
+  isHistoryNavDirection,
+  HISTORY_NAV_CHANNEL,
+  type HistoryNavDirection,
 } from "../shared/navigation-gestures";
 import {
   isTabSelectionDirection,
@@ -190,14 +190,15 @@ const desktopAPI = {
       issueKey: string;
     }) => void,
   ) => subscribeToMainRendererChannel("inbox:open", callback),
-  /** Listen for native macOS back/forward swipe gestures. */
-  onNavigationGesture: (callback: (gesture: NavigationGesture) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, gesture: unknown) => {
-      if (isNavigationGesture(gesture)) callback(gesture);
+  /** Listen for per-tab history back/forward requests — a macOS trackpad
+   *  swipe or the Cmd/Ctrl+[ / ] keyboard shortcuts. Returns an unsubscribe fn. */
+  onHistoryNav: (callback: (direction: HistoryNavDirection) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => {
+      if (isHistoryNavDirection(direction)) callback(direction);
     };
-    ipcRenderer.on(NAVIGATION_GESTURE_CHANNEL, handler);
+    ipcRenderer.on(HISTORY_NAV_CHANNEL, handler);
     return () => {
-      ipcRenderer.removeListener(NAVIGATION_GESTURE_CHANNEL, handler);
+      ipcRenderer.removeListener(HISTORY_NAV_CHANNEL, handler);
     };
   },
   /** Report the renderer's memory-router path for recovery diagnostics. */

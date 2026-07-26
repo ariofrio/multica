@@ -1,14 +1,18 @@
-export const NAVIGATION_GESTURE_CHANNEL = "navigation:gesture";
+// Per-tab history back/forward, delivered from the main process to the
+// renderer, which routes it to the active tab's goBack/goForward. The same
+// channel carries both a macOS trackpad swipe (installNavigationGestures) and
+// the Cmd/Ctrl+[ / ] keyboard shortcuts (handleAppShortcut).
+export const HISTORY_NAV_CHANNEL = "navigation:history";
 
-export type NavigationGesture = "back" | "forward";
+export type HistoryNavDirection = "back" | "forward";
 
-export function isNavigationGesture(value: unknown): value is NavigationGesture {
+export function isHistoryNavDirection(value: unknown): value is HistoryNavDirection {
   return value === "back" || value === "forward";
 }
 
-export function navigationGestureFromSwipe(
+export function historyNavFromSwipe(
   direction: string,
-): NavigationGesture | null {
+): HistoryNavDirection | null {
   if (direction === "right") return "back";
   if (direction === "left") return "forward";
   return null;
