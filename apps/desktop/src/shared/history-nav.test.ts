@@ -18,7 +18,7 @@ describe("historyNavFromSwipe", () => {
 });
 
 describe("isHistoryNavDirection", () => {
-  it("accepts only the renderer navigation gestures", () => {
+  it("accepts only the two history directions, whichever producer sent them", () => {
     expect(isHistoryNavDirection("back")).toBe(true);
     expect(isHistoryNavDirection("forward")).toBe(true);
     expect(isHistoryNavDirection("right")).toBe(false);
