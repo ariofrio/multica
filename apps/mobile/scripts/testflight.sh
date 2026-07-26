@@ -19,9 +19,9 @@ set -euo pipefail
 # Optional env:
 #   ASC_KEY_PATH    path to AuthKey_<ASC_KEY_ID>.p8
 #                   (default ~/.appstoreconnect/private_keys/AuthKey_<id>.p8)
-#   IOS_BUILD_NUMBER  CFBundleVersion; must be unique per upload for a given
-#                   marketing version (default: commit count on HEAD)
-#   PREBUILD_CLEAN=1  regenerate ios/ from scratch before building
+#   IOS_BUILD_NUMBER  override CFBundleVersion; by default it is derived from
+#                   what App Store Connect already has (highest + 1)
+#   ALLOW_DIRTY=1   release from a dirty working tree (debugging only)
 # ==========================================================================
 
 MOBILE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -43,21 +43,34 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8}"
+export ASC_KEY_PATH
 if [ ! -f "$ASC_KEY_PATH" ]; then
   echo "✗ App Store Connect API key not found: $ASC_KEY_PATH"
-  echo "  Download it once from App Store Connect → Users and Access →"
-  echo "  Integrations → Team Keys, then move it there (Apple lets you"
-  echo "  download a key exactly once)."
+  echo "  Create an Admin-role *team* key under App Store Connect → Users and"
+  echo "  Access → Integrations → Team Keys, then move the .p8 there (Apple"
+  echo "  lets you download a key exactly once)."
   exit 1
 fi
 
 command -v xcodebuild >/dev/null 2>&1 || { echo "✗ xcodebuild not found — install Xcode."; exit 1; }
 
+# A build number identifies a commit to everyone reading TestFlight later, so
+# refuse to upload a working tree that no commit describes. Untracked files are
+# fine — .env.development.local and ios/ live there.
+if [ "${ALLOW_DIRTY:-}" != "1" ] && ! git diff --quiet HEAD --; then
+  echo "✗ Working tree has uncommitted changes to tracked files."
+  echo "  Commit them first, or set ALLOW_DIRTY=1 for a throwaway build."
+  git status --short --untracked-files=no
+  exit 1
+fi
+
 BUNDLE_ID="${EXPO_BUNDLE_IDENTIFIER_PROD:-ai.multica.mobile}"
-# Commit count is monotonic and reproducible, so re-running this script on the
-# same commit re-uploads the same build number (App Store Connect rejects the
-# duplicate instead of silently shipping two different binaries as one build).
-IOS_BUILD_NUMBER="${IOS_BUILD_NUMBER:-$(git rev-list --count HEAD)}"
+
+# Ask App Store Connect for the next free build number. Doing this before the
+# 20-minute native build also surfaces a bad key or a missing app record early.
+if [ -z "${IOS_BUILD_NUMBER:-}" ]; then
+  IOS_BUILD_NUMBER="$(node scripts/next-build-number.mjs "$BUNDLE_ID")"
+fi
 export IOS_BUILD_NUMBER
 
 BUILD_DIR="$MOBILE_DIR/.testflight"
@@ -66,35 +79,42 @@ EXPORT_OPTIONS="$BUILD_DIR/ExportOptions.plist"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
+echo "→ commit        $(git rev-parse --short HEAD)"
 echo "→ bundle id     $BUNDLE_ID"
 echo "→ team          $APPLE_TEAM_ID"
 echo "→ build number  $IOS_BUILD_NUMBER"
 
+# xcodebuild needs these on both the archive and the export call.
+# -allowProvisioningUpdates lets it create and renew the App Store distribution
+# profile itself, which is why the key has to be an Admin-role *team* key:
+# individual keys can't call the provisioning endpoints at all, and App Manager
+# only reaches them via a separate Certificates/Identifiers/Profiles grant that
+# team keys have no way to carry.
+AUTH_ARGS=(
+  -allowProvisioningUpdates
+  -authenticationKeyPath "$ASC_KEY_PATH"
+  -authenticationKeyID "$ASC_KEY_ID"
+  -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+)
+
 # ---------- Generate the native project ----------
-# ios/ is gitignored generated output, so every release run regenerates it from
-# app.config.ts. First run downloads CocoaPods and compiles React Native from
-# source — 10-20 minutes.
-PREBUILD_ARGS=(--platform ios)
-[ "${PREBUILD_CLEAN:-}" = "1" ] && PREBUILD_ARGS+=(--clean)
+# --clean is not optional here: dev / staging / production carry different
+# bundle ids, and Expo requires a clean prebuild when switching variants
+# (https://docs.expo.dev/build-reference/variants/). A reused ios/ from a
+# staging run would archive the wrong app. Costs a CocoaPods install and a
+# React Native compile from source — 10-20 minutes.
 # `expo` resolves via node_modules/.bin because this script only ever runs
 # through `pnpm ios:testflight`.
-expo prebuild "${PREBUILD_ARGS[@]}"
+expo prebuild --platform ios --clean
 
 # ---------- Archive ----------
-# -allowProvisioningUpdates + the three -authenticationKey* flags let xcodebuild
-# register the bundle id and create/renew the App Store distribution profile on
-# its own. That is the whole reason this path needs a *team* key: individual
-# App Store Connect keys can't touch the provisioning endpoints.
 xcodebuild \
   -workspace ios/Multica.xcworkspace \
   -scheme Multica \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE_PATH" \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$ASC_KEY_PATH" \
-  -authenticationKeyID "$ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+  "${AUTH_ARGS[@]}" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
   archive
 
@@ -120,10 +140,7 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
   -exportPath "$BUILD_DIR/export" \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$ASC_KEY_PATH" \
-  -authenticationKeyID "$ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+  "${AUTH_ARGS[@]}"
 
 echo ""
 echo "✓ Uploaded build $IOS_BUILD_NUMBER of $BUNDLE_ID to App Store Connect."

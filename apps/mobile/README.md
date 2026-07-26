@@ -106,15 +106,21 @@ APPLE_TEAM_ID=ABCDE12345 ASC_KEY_ID=XXXXXXXXXX ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-
 
 That archives the production variant with the team's Apple Distribution certificate and uploads it straight to App Store Connect (`xcodebuild -exportArchive` with `destination=upload` — no fastlane, no EAS, no Transporter step).
 
-**One-time setup**, in this order:
+**One-time setup.** All three steps are browser work, and the order matters — each one needs the previous one to exist:
 
-1. **Create the app record** — App Store Connect → Apps → **+** → New App. Platform iOS, bundle id `ai.multica.mobile`, and an SKU of your choosing. This step has no CLI equivalent: the App Store Connect API is explicitly [read/update only for app records](https://developer.apple.com/documentation/appstoreconnectapi/apps) ("Don't use this API to create new apps"), so it must be done in the web UI once. The bundle id itself does *not* need pre-registering — `xcodebuild -allowProvisioningUpdates` registers it and creates the distribution profile on the first run.
-2. **Create an App Store Connect API key** — Users and Access → Integrations → **Team Keys** → **+**, role **App Manager**. It must be a *team* key, not an individual key: individual keys can't use the provisioning endpoints, so signing would fail. Apple lets you download the `.p8` exactly once — put it at `~/.appstoreconnect/private_keys/AuthKey_<ASC_KEY_ID>.p8` (or point `ASC_KEY_PATH` at it). Note the Key ID and the Issuer ID shown on that page.
-3. **Answer the export-compliance question** on the first uploaded build in App Store Connect, then add testers under TestFlight → Internal (or External) Testing.
+1. **Register the explicit App ID** — [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers) → **+** → App IDs → App, Bundle ID **Explicit** = `ai.multica.mobile`. This has to come first because the New App form in step 2 only offers Bundle IDs that already exist ([register an App ID](https://developer.apple.com/help/account/identifiers/register-an-app-id)).
+2. **Create the app record** — [App Store Connect → Apps → **+** → New App](https://appstoreconnect.apple.com/apps). Platform iOS, pick the Bundle ID from step 1, and an SKU of your choosing. No CLI equivalent exists: the App Store Connect API is [read/update only for app records](https://developer.apple.com/documentation/appstoreconnectapi/apps) — *"Don't use this API to create new apps; instead, create new apps on the App Store Connect website."*
+3. **Create an App Store Connect API key** — Users and Access → Integrations → **Team Keys** → **+**, role **Admin**. Two things about that role choice: it must be a *team* key, because [individual keys can't use the provisioning endpoints](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api) that `-allowProvisioningUpdates` needs; and **App Manager is not enough** — in Apple's [role matrix](https://developer.apple.com/support/roles/) every provisioning row for App Manager is conditional on separate Certificates, Identifiers & Profiles access, which the team-key UI has no way to grant. Admin and Account Holder have it unconditionally. Apple lets you download the `.p8` exactly once — put it at `~/.appstoreconnect/private_keys/AuthKey_<ASC_KEY_ID>.p8` (or point `ASC_KEY_PATH` at it). Note the Key ID and the Issuer ID shown on that page.
 
-Build numbers come from the commit count on `HEAD`, so each commit uploads cleanly and re-running on the same commit is rejected by Apple rather than shipping two different binaries under one build number. Override with `IOS_BUILD_NUMBER=42`. Marketing version comes from `version` in `app.config.ts`.
+Two account-level gates can block the above regardless of order: the Account Holder has to [request API access](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api/) before any key can be generated, and "you can't add an app to your account until the Account Holder signs the latest agreement in the Business section."
 
-Expect 10–20 minutes on a cold build (CocoaPods + React Native from source), plus 5–15 minutes of Apple-side processing before the build shows up in TestFlight.
+After the first upload, answer the **export-compliance** question on the build in App Store Connect, then add testers under TestFlight → Internal (or External) Testing.
+
+**Build numbers** are read from App Store Connect — the script takes the highest build number the app already has and adds one, so uploads can never collide. That query runs before the native build, which also means a bad key or a missing app record fails in seconds instead of after a 20-minute compile. Override with `IOS_BUILD_NUMBER=42`. Marketing version comes from `version` in `app.config.ts`.
+
+The script refuses to run with uncommitted changes to tracked files, so every TestFlight build corresponds to a commit; `ALLOW_DIRTY=1` overrides for throwaway builds. It always does a clean prebuild, because dev / staging / production use different bundle ids and Expo [requires `--clean` when switching variants](https://docs.expo.dev/build-reference/variants/) — a reused `ios/` can otherwise archive the wrong app.
+
+Expect 10–20 minutes per release (clean prebuild = CocoaPods + React Native from source), plus 5–15 minutes of Apple-side processing before the build shows up in TestFlight.
 
 ## Pointing at a different backend
 

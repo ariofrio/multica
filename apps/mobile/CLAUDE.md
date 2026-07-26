@@ -155,10 +155,11 @@ Never copy the visual shape of an existing hand-written `components/ui/` compone
 
 - **Main CI** (`.github/workflows/ci.yml`) excludes mobile via `--filter='!@multica/mobile'`. Mobile failures do NOT block web/desktop PRs.
 - **Mobile verify** (`.github/workflows/mobile-verify.yml`): triggered on `apps/mobile/**` or `packages/core/types/**` changes — runs typecheck/lint/test only, no IPA build.
-- **TestFlight** (`scripts/testflight.sh`, run via `pnpm ios:mobile:testflight`): archives the production variant locally and uploads it to App Store Connect with `xcodebuild -exportArchive destination=upload`. Requires a paid Apple Developer team plus an App Store Connect **team** API key — see README §"Distribute via TestFlight". Build number = commit count on `HEAD`, fed through `IOS_BUILD_NUMBER` → `ios.buildNumber` in `app.config.ts`.
+- **TestFlight** (`scripts/testflight.sh`, run via `pnpm ios:mobile:testflight`): clean-prebuilds and archives the production variant locally, then uploads it with `xcodebuild -exportArchive destination=upload`. Requires a paid Apple Developer team plus an **Admin-role team** App Store Connect API key — individual keys can't reach the provisioning endpoints, and App Manager only reaches them through a separate Certificates/Identifiers/Profiles grant that team keys can't carry. See README §"Distribute via TestFlight". Refuses to run on a dirty tree (`ALLOW_DIRTY=1` overrides).
+- **Build numbers** come from App Store Connect, not from git: `scripts/next-build-number.mjs` takes the highest existing build number and adds one, feeding `IOS_BUILD_NUMBER` → `ios.buildNumber` in `app.config.ts`. Anything derived locally (commit count, tag count) collides when history is rewritten — a squash merge reproduces the PR commit's count.
 - **Not implemented yet**: a CI release workflow (`mobile-release.yml` on a `mobile-v*.*.*` tag), EAS Build / Submit, and EAS Update OTA. There is no `eas.json` and no Expo account wired up; releases are the local script above. Don't cite EAS as the current path.
 
-The one step with no CLI equivalent is creating the App Store Connect app record — Apple's `apps` API is read/update only, so it is a one-time manual action in the web UI. Everything downstream (bundle id registration, distribution profile, upload) is automated by the script.
+Two setup steps are human-only and must happen in this order before any upload: register the **explicit App ID** on the developer portal, then create the **App Store Connect app record** (the New App form only offers already-registered Bundle IDs, and Apple's `apps` API is read/update only). Signing, profile creation and upload are automated from there.
 
 Mobile release cadence is decoupled from main `v*.*.*` tags (server / CLI / desktop).
 
