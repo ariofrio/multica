@@ -178,11 +178,7 @@ describe("keyboard shortcut definitions", () => {
   });
 
   it("keeps app-owned and editing accelerators reserved on desktop", () => {
-    for (const key of [
-      "W", "R", "Q", "A", "C", "V", "X", "Y", "Z", "0", "Minus", "Plus",
-      // History back/forward and tab-switch brackets (plus shifted glyphs).
-      "[", "]", "{", "}",
-    ]) {
+    for (const key of ["W", "R", "Q", "A", "C", "V", "X", "Y", "Z", "0", "Minus", "Plus"]) {
       expect(
         isReservedShortcut(createShortcutChord(key, { primary: true }), "macos", "desktop"),
       ).toBe(true);
@@ -208,6 +204,28 @@ describe("keyboard shortcut definitions", () => {
       expect(isReservedShortcut(createShortcutChord("PageDown", { primary: true }), platform, "desktop")).toBe(true);
       // The macOS brackets are NOT the Windows binding, so they stay recordable there.
       expect(isReservedShortcut(createShortcutChord("[", { primary: true }), platform, "desktop")).toBe(false);
+    }
+  });
+
+  it("leaves superset chords recordable, since handleAppShortcut ignores them", () => {
+    // handleAppShortcut bails on the bracket chords once Control or Option
+    // joins, so reserving those would block a recording nothing can shadow.
+    for (const extra of [{ control: true }, { alt: true }]) {
+      expect(
+        isReservedShortcut(
+          createShortcutChord("[", { primary: true, ...extra }),
+          "macos",
+          "desktop",
+        ),
+      ).toBe(false);
+    }
+    for (const platform of ["windows", "linux"] as const) {
+      expect(
+        isReservedShortcut(createShortcutChord("Left", { alt: true, control: true }), platform, "desktop"),
+      ).toBe(false);
+      expect(
+        isReservedShortcut(createShortcutChord("PageUp", { primary: true, shift: true }), platform, "desktop"),
+      ).toBe(false);
     }
   });
 

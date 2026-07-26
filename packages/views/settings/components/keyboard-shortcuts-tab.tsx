@@ -48,15 +48,11 @@ type CaptureError =
   | { kind: "unsafe" }
   | null;
 
-// Fixed tab/history bindings use each platform's native convention (matching
-// apps/desktop `handleAppShortcut`): macOS brackets vs Windows/Linux
-// Alt+arrows and Ctrl+PageUp/PageDown. Displayed per the viewer's platform.
-//
-// Resolved at RENDER time, like every other row here. A module-level snapshot
-// would read the navigator fallback: the authoritative OS reaches
-// `configureShortcutPlatform` from CoreProvider's first render, which is after
-// this module is evaluated — so the panel could show a platform's keys that
-// `handleAppShortcut` does not bind.
+// Mirrors the fixed bindings in apps/desktop `handleAppShortcut`. Resolved at
+// RENDER time, like every other row here: the authoritative OS reaches
+// `configureShortcutPlatform` from CoreProvider's first render, so a
+// module-level snapshot would read the navigator fallback instead and could
+// show keys handleAppShortcut does not bind on this platform.
 function fixedNavShortcuts(): Record<
   "prevTab" | "nextTab" | "historyBack" | "historyForward",
   ShortcutChord

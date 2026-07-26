@@ -169,9 +169,7 @@ describe("KeyboardShortcutsTab", () => {
   });
 });
 
-// The keycaps of the fixed row whose label is `label`, read as their
-// accessible titles ("Ctrl", "Page Up", …). Walks up from the label to the
-// SettingsRow, which is the first ancestor that also holds the keycaps.
+/** Keycaps of the named fixed row, as their accessible titles ("Ctrl", "Page Up"). */
 function fixedRowKeys(label: string): string[] {
   let node: HTMLElement | null = screen.getByText(label);
   while (node && node.querySelectorAll("[title]").length === 0) {
@@ -182,11 +180,8 @@ function fixedRowKeys(label: string): string[] {
   );
 }
 
-// The fixed tab/history rows must show the keys apps/desktop `handleAppShortcut`
-// actually binds on the viewer's OS. They are derived from the AUTHORITATIVE
-// platform (configureShortcutPlatform, set by CoreProvider on first render) —
-// not from a module-eval snapshot of the navigator fallback, which would show
-// Windows users the macOS brackets that handleAppShortcut ignores there.
+// The configured platform must win over the navigator fallback, or Windows
+// users see the macOS brackets that handleAppShortcut ignores there.
 describe("KeyboardShortcutsTab fixed tab/history shortcuts", () => {
   afterEach(() => {
     cleanup();
