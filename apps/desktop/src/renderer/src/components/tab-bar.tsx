@@ -50,12 +50,21 @@ const TAB_ENTRY_EASE = [0.22, 1, 0.36, 1] as const;
 // and flares into it through concave bottom corners. Each flare is a small
 // square whose radial gradient carves a quarter-circle notch (shell shows
 // through), strokes a 1px arc that continues the tab's side border into the
-// content card's top ring, and fills the rest with the surface color. The
-// 0.4px stop spread anti-aliases the arc.
+// content card's top ring, and fills the rest with the surface color.
+//
+// The arc runs on top of the card's ring rather than beside it, so the keyline
+// has to be --surface-keyline (opaque) and not --surface-border (translucent
+// in dark mode): a translucent stroke would composite over the ring and the
+// shared edge would read as a brighter third color. The tab's own border and
+// the card's ring use the same token for the same reason — one silhouette,
+// one keyline.
+//
+// Stops: full strength across the 9px..10px band so the arc carries the same
+// ink as the 1px border it continues, with a 0.3px spread for anti-aliasing.
 const TAB_FLARE_RADIUS = 10;
 const tabFlareBackground = (side: "left" | "right") => {
   const r = TAB_FLARE_RADIUS;
-  return `radial-gradient(circle at top ${side}, transparent ${r - 1.2}px, var(--surface-border) ${r - 0.8}px, var(--surface-border) ${r - 0.2}px, var(--page-canvas) ${r + 0.2}px)`;
+  return `radial-gradient(circle at top ${side}, transparent ${r - 1.15}px, var(--surface-keyline) ${r - 0.85}px, var(--surface-keyline) ${r - 0.15}px, var(--page-canvas) ${r + 0.15}px)`;
 };
 
 type TabSnapshot = {
@@ -331,7 +340,7 @@ function SortableTabItem({
               isDragging && "opacity-60",
             )}
           >
-            <span className="absolute inset-x-0 top-0 bottom-2.5 rounded-t-lg border border-b-0 border-surface-border bg-page-canvas" />
+            <span className="absolute inset-x-0 top-0 bottom-2.5 rounded-t-lg border border-b-0 border-surface-keyline bg-page-canvas" />
             <span className="absolute inset-x-0 bottom-0 h-2.5 bg-page-canvas" />
             <span
               className="absolute bottom-0 size-2.5"
