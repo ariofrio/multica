@@ -51,19 +51,32 @@ type CaptureError =
 // Fixed tab/history bindings use each platform's native convention (matching
 // apps/desktop `handleAppShortcut`): macOS brackets vs Windows/Linux
 // Alt+arrows and Ctrl+PageUp/PageDown. Displayed per the viewer's platform.
-const FIXED_NAV_IS_MAC = getShortcutPlatform() === "macos";
-const PREV_TAB_SHORTCUT: ShortcutChord = FIXED_NAV_IS_MAC
-  ? createShortcutChord("[", { primary: true, shift: true })
-  : createShortcutChord("PageUp", { primary: true });
-const NEXT_TAB_SHORTCUT: ShortcutChord = FIXED_NAV_IS_MAC
-  ? createShortcutChord("]", { primary: true, shift: true })
-  : createShortcutChord("PageDown", { primary: true });
-const HISTORY_BACK_SHORTCUT: ShortcutChord = FIXED_NAV_IS_MAC
-  ? createShortcutChord("[", { primary: true })
-  : createShortcutChord("Left", { alt: true });
-const HISTORY_FORWARD_SHORTCUT: ShortcutChord = FIXED_NAV_IS_MAC
-  ? createShortcutChord("]", { primary: true })
-  : createShortcutChord("Right", { alt: true });
+//
+// Resolved at RENDER time, like every other row here. A module-level snapshot
+// would read the navigator fallback: the authoritative OS reaches
+// `configureShortcutPlatform` from CoreProvider's first render, which is after
+// this module is evaluated — so the panel could show a platform's keys that
+// `handleAppShortcut` does not bind.
+function fixedNavShortcuts(): Record<
+  "prevTab" | "nextTab" | "historyBack" | "historyForward",
+  ShortcutChord
+> {
+  const isMac = getShortcutPlatform() === "macos";
+  return {
+    prevTab: isMac
+      ? createShortcutChord("[", { primary: true, shift: true })
+      : createShortcutChord("PageUp", { primary: true }),
+    nextTab: isMac
+      ? createShortcutChord("]", { primary: true, shift: true })
+      : createShortcutChord("PageDown", { primary: true }),
+    historyBack: isMac
+      ? createShortcutChord("[", { primary: true })
+      : createShortcutChord("Left", { alt: true }),
+    historyForward: isMac
+      ? createShortcutChord("]", { primary: true })
+      : createShortcutChord("Right", { alt: true }),
+  };
+}
 
 export function KeyboardShortcutsTab() {
   const { t } = useT("settings");
@@ -75,6 +88,7 @@ export function KeyboardShortcutsTab() {
   const setShortcut = useShortcutStore((state) => state.setShortcut);
   const resetShortcut = useShortcutStore((state) => state.resetShortcut);
   const resetAll = useShortcutStore((state) => state.resetAll);
+  const fixedNav = fixedNavShortcuts();
 
   const visibleActions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -214,10 +228,10 @@ export function KeyboardShortcutsTab() {
       >
         <SettingsCard>
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.close_tab)} shortcut={createShortcutChord("W", { primary: true })} />
-          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.prev_tab)} shortcut={PREV_TAB_SHORTCUT} />
-          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.next_tab)} shortcut={NEXT_TAB_SHORTCUT} />
-          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_back)} shortcut={HISTORY_BACK_SHORTCUT} />
-          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_forward)} shortcut={HISTORY_FORWARD_SHORTCUT} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.prev_tab)} shortcut={fixedNav.prevTab} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.next_tab)} shortcut={fixedNav.nextTab} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_back)} shortcut={fixedNav.historyBack} />
+          <FixedShortcutRow label={t(($) => $.shortcuts.fixed.history_forward)} shortcut={fixedNav.historyForward} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.zoom_in)} shortcut={createShortcutChord("Plus", { primary: true })} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.zoom_out)} shortcut={createShortcutChord("Minus", { primary: true })} />
           <FixedShortcutRow label={t(($) => $.shortcuts.fixed.reset_zoom)} shortcut={createShortcutChord("0", { primary: true })} />

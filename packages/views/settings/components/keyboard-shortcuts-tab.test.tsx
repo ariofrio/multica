@@ -168,3 +168,48 @@ describe("KeyboardShortcutsTab", () => {
     );
   });
 });
+
+// The keycaps of the fixed row whose label is `label`, read as their
+// accessible titles ("Ctrl", "Page Up", …). Walks up from the label to the
+// SettingsRow, which is the first ancestor that also holds the keycaps.
+function fixedRowKeys(label: string): string[] {
+  let node: HTMLElement | null = screen.getByText(label);
+  while (node && node.querySelectorAll("[title]").length === 0) {
+    node = node.parentElement;
+  }
+  return Array.from(node?.querySelectorAll("[title]") ?? []).map(
+    (cap) => cap.getAttribute("title") ?? "",
+  );
+}
+
+// The fixed tab/history rows must show the keys apps/desktop `handleAppShortcut`
+// actually binds on the viewer's OS. They are derived from the AUTHORITATIVE
+// platform (configureShortcutPlatform, set by CoreProvider on first render) —
+// not from a module-eval snapshot of the navigator fallback, which would show
+// Windows users the macOS brackets that handleAppShortcut ignores there.
+describe("KeyboardShortcutsTab fixed tab/history shortcuts", () => {
+  afterEach(() => {
+    cleanup();
+    configureShortcutPlatform(null);
+  });
+
+  it("shows the Windows/Linux native keys when the configured platform is windows", () => {
+    configureShortcutPlatform("windows");
+    renderWithI18n(<KeyboardShortcutsTab />);
+
+    expect(fixedRowKeys("Previous tab")).toEqual(["Ctrl", "Page Up"]);
+    expect(fixedRowKeys("Next tab")).toEqual(["Ctrl", "Page Down"]);
+    expect(fixedRowKeys("Back")).toEqual(["Alt", "Left Arrow"]);
+    expect(fixedRowKeys("Forward")).toEqual(["Alt", "Right Arrow"]);
+  });
+
+  it("shows the macOS bracket keys when the configured platform is macos", () => {
+    configureShortcutPlatform("macos");
+    renderWithI18n(<KeyboardShortcutsTab />);
+
+    expect(fixedRowKeys("Previous tab")).toEqual(["Command", "Shift", "["]);
+    expect(fixedRowKeys("Next tab")).toEqual(["Command", "Shift", "]"]);
+    expect(fixedRowKeys("Back")).toEqual(["Command", "["]);
+    expect(fixedRowKeys("Forward")).toEqual(["Command", "]"]);
+  });
+});
