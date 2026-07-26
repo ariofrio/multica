@@ -143,43 +143,19 @@ beforeEach(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 describe("TabBar hover action buttons", () => {
-  it("makes hover-pill corners concentric with an adjacent active-tab flare", () => {
-    state.byWorkspace.acme.tabs = [
-      { id: "tA", url: "/acme/issues", title: "Issues", pinned: false },
-      { id: "tB", url: "/acme/projects", title: "Projects", pinned: false },
-      { id: "tC", url: "/acme/agents", title: "Agents", pinned: false },
-      { id: "tD", url: "/acme/runtimes", title: "Runtimes", pinned: false },
-    ];
-    state.byWorkspace.acme.activeTabId = "tB";
-
-    const { container } = render(<TabBar />);
-    const pill = (tabId: string) =>
-      container.querySelector(
-        `[data-tab-id="${tabId}"] [data-hover-pill]`,
-      );
-
-    expect(pill("tA")).toHaveAttribute("data-active-neighbor", "right");
-    expect(pill("tA")).toHaveClass("left-0.5", "-right-px", "bottom-0");
-    expect(pill("tC")).toHaveAttribute("data-active-neighbor", "left");
-    expect(pill("tC")).toHaveClass("-left-px", "right-0.5", "bottom-0");
-    expect(pill("tD")).not.toHaveAttribute("data-active-neighbor");
-    expect(pill("tD")).toHaveClass("inset-x-0.5", "bottom-1");
-  });
-
-  it("does not bridge the pinned-zone divider to reach an active tab", () => {
-    state.byWorkspace.acme.tabs = [
-      { id: "tA", url: "/acme/issues", title: "Issues", pinned: true },
-      { id: "tB", url: "/acme/projects", title: "Projects", pinned: false },
-    ];
-    state.byWorkspace.acme.activeTabId = "tA";
-
+  it("aligns the hover-pill corner without changing its inset dimensions", () => {
     const { container } = render(<TabBar />);
     const pill = container.querySelector(
       '[data-tab-id="tB"] [data-hover-pill]',
     );
 
-    expect(pill).not.toHaveAttribute("data-active-neighbor");
-    expect(pill).toHaveClass("inset-x-0.5", "bottom-1");
+    expect(pill).toHaveClass(
+      "inset-x-0.5",
+      "top-1",
+      "bottom-1",
+      "rounded-sm",
+    );
+    expect(pill).not.toHaveClass("rounded-lg");
   });
 
   it("renders a Pin button on every unpinned tab and an Unpin button on every pinned tab", () => {

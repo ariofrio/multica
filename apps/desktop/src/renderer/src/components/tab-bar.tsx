@@ -147,7 +147,6 @@ function SortableTabItem({
   isNew,
   shouldReduceMotion,
   showSeparator,
-  activeNeighbor,
 }: {
   tab: Tab;
   isActive: boolean;
@@ -165,12 +164,6 @@ function SortableTabItem({
    * faded out while either of the two tabs it divides is hovered.
    */
   showSeparator: boolean;
-  /**
-   * Side occupied by an immediately adjacent active tab. The hover pill
-   * grounds and crosses that seam by 1px so its 10px corner shares the active
-   * flare's center.
-   */
-  activeNeighbor: "left" | "right" | null;
 }) {
   const setActiveTab = useTabStore((s) => s.setActiveTab);
   const closeTab = useTabStore((s) => s.closeTab);
@@ -353,15 +346,7 @@ function SortableTabItem({
           <span
             aria-hidden
             data-hover-pill
-            data-active-neighbor={activeNeighbor ?? undefined}
-            className={cn(
-              "pointer-events-none absolute top-1 rounded-lg bg-sidebar-accent opacity-0 transition-opacity group-hover/tab:opacity-100",
-              activeNeighbor === "left"
-                ? "-left-px right-0.5 bottom-0"
-                : activeNeighbor === "right"
-                  ? "left-0.5 -right-px bottom-0"
-                  : "inset-x-0.5 bottom-1",
-            )}
+            className="pointer-events-none absolute inset-x-0.5 top-1 bottom-1 rounded-sm bg-sidebar-accent opacity-0 transition-opacity group-hover/tab:opacity-100"
           />
         )}
         {showSeparator && (
@@ -638,17 +623,6 @@ export function TabBar() {
             <SortableContext items={tabIds} strategy={horizontalListSortingStrategy}>
               {tabs.map((tab, index) => {
                 const previousTab = index > 0 ? tabs[index - 1] : null;
-                const nextTab = index < tabs.length - 1 ? tabs[index + 1] : null;
-                const hasDividerBefore =
-                  !!previousTab && previousTab.pinned && !tab.pinned;
-                const hasDividerAfter =
-                  !!nextTab && tab.pinned && !nextTab.pinned;
-                const activeNeighbor =
-                  previousTab?.id === activeTabId && !hasDividerBefore
-                    ? "left"
-                    : nextTab?.id === activeTabId && !hasDividerAfter
-                      ? "right"
-                      : null;
                 return (
                   <Fragment key={tab.id}>
                     <SortableTabItem
@@ -660,7 +634,6 @@ export function TabBar() {
                       )}
                       isNew={addedTabIdSet.has(tab.id)}
                       shouldReduceMotion={shouldReduceMotion}
-                      activeNeighbor={activeNeighbor}
                       showSeparator={
                         !!previousTab &&
                         tab.id !== activeTabId &&
