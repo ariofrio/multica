@@ -1,6 +1,6 @@
 import { ElectronAPI } from "@electron-toolkit/preload";
 import type { RuntimeConfigResult } from "../shared/runtime-config";
-import type { HistoryNavDirection } from "../shared/navigation-gestures";
+import type { HistoryNavDirection } from "../shared/history-nav";
 import type { TabSelectionDirection } from "../shared/tab-selection";
 import type { RendererRouteContextInput } from "../shared/renderer-route-context";
 import type { FreezeBreadcrumb } from "../shared/freeze-breadcrumb";

@@ -9,10 +9,12 @@ import { setupDaemonManager } from "./daemon-manager";
 import { setupLocalDirectory } from "./local-directory";
 import { openExternalSafely, downloadURLSafely } from "./external-url";
 import { installContextMenu } from "./context-menu";
-import { handleAppShortcut } from "./keyboard-shortcuts";
+import {
+  handleAppShortcut,
+  type WindowSurface,
+} from "./keyboard-shortcuts";
+import { dispatchShortcutResult } from "./shortcut-dispatch";
 import { installNavigationGestures } from "./navigation-gestures";
-import { HISTORY_NAV_CHANNEL } from "../shared/navigation-gestures";
-import { TAB_SELECTION_CHANNEL } from "../shared/tab-selection";
 import { installNavigationGuard } from "./navigation-guard";
 import { getAppVersion } from "./app-version";
 import { loadRuntimeConfig } from "./runtime-config-loader";
@@ -289,28 +291,18 @@ function installLocaleRefresh(window: BrowserWindow): void {
   });
 }
 
-function installWindowShortcutHandler(window: BrowserWindow): void {
+function installWindowShortcutHandler(
+  window: BrowserWindow,
+  surface: WindowSurface,
+): void {
   window.webContents.on("before-input-event", (event, input) => {
-    const result = handleAppShortcut(input, window.webContents);
-    if (result === "close-tab") {
-      event.preventDefault();
-      window.webContents.send("tab:close-active");
-    } else if (result === "prev-tab" || result === "next-tab") {
-      event.preventDefault();
-      window.webContents.send(
-        TAB_SELECTION_CHANNEL,
-        result === "prev-tab" ? "previous" : "next",
-      );
-    } else if (result === "history-back" || result === "history-forward") {
-      // Reuse the history-nav channel: the renderer already routes it to the
-      // active tab's goBack/goForward, so keyboard history nav needs no new
-      // listener (the same channel also carries macOS trackpad swipes).
-      event.preventDefault();
-      window.webContents.send(
-        HISTORY_NAV_CHANNEL,
-        result === "history-back" ? "back" : "forward",
-      );
-    } else if (result) {
+    const result = handleAppShortcut(
+      input,
+      window.webContents,
+      process.platform,
+      surface,
+    );
+    if (dispatchShortcutResult(result, window.webContents)) {
       event.preventDefault();
     }
   });
@@ -417,7 +409,7 @@ function createWindow(): BrowserWindow {
 
   // Calling preventDefault in the shared shortcut handler prevents both the
   // renderer keydown and the application-menu accelerator from double-firing.
-  installWindowShortcutHandler(window);
+  installWindowShortcutHandler(window, "shell");
 
   // Dev-mode renderer diagnostics. When the renderer crashes hard enough
   // that DevTools can't be opened (white screen with no clickable surface),
@@ -529,7 +521,7 @@ function createIssueWindow(context: IssueWindowContext): void {
     void openExternalSafely(details.url);
     return { action: "deny" };
   });
-  installWindowShortcutHandler(window);
+  installWindowShortcutHandler(window, "issue");
 
   const initialRouteContext = sanitizeRendererRouteContext({
     surface: "tab",

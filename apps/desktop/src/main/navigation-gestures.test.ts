@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import { HISTORY_NAV_CHANNEL } from "../shared/navigation-gestures";
+import { HISTORY_NAV_CHANNEL } from "../shared/history-nav";
 import { installNavigationGestures } from "./navigation-gestures";
 
 function makeWindow() {

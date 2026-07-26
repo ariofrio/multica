@@ -302,3 +302,34 @@ describe("handleAppShortcut — tab switching (Windows/Linux Ctrl+PgUp/PgDn)", (
     expect(handleAppShortcut(key("PageUp", { control: true }), wc, "darwin")).toBe(false);
   });
 });
+
+describe("handleAppShortcut — issue-window surface", () => {
+  it("leaves the navigation chords unclaimed", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("[", { meta: true }), wc, "darwin", "issue")).toBe(false);
+    expect(handleAppShortcut(key("]", { meta: true, shift: true }), wc, "darwin", "issue")).toBe(false);
+    expect(handleAppShortcut(key("ArrowLeft", { alt: true }), wc, "win32", "issue")).toBe(false);
+    expect(handleAppShortcut(key("PageUp", { control: true }), wc, "win32", "issue")).toBe(false);
+  });
+
+  it("still blocks reload and still zooms", () => {
+    const wc = makeWc();
+    expect(handleAppShortcut(key("r", { meta: true }), wc, "darwin", "issue")).toBe(true);
+    expect(handleAppShortcut(key("=", { meta: true }), wc, "darwin", "issue")).toBe(true);
+    expect(wc.currentLevel()).toBeGreaterThan(0);
+  });
+});
+
+describe("handleAppShortcut — navigation auto-repeat", () => {
+  it("repeats tab and history navigation, unlike Cmd+W", () => {
+    const wc = makeWc();
+    const held = { ...key("]", { meta: true }), isAutoRepeat: true };
+    expect(handleAppShortcut(held, wc, "darwin")).toBe("history-forward");
+    expect(
+      handleAppShortcut({ ...key("PageDown", { control: true }), isAutoRepeat: true }, wc, "win32"),
+    ).toBe("next-tab");
+    expect(
+      handleAppShortcut({ ...key("w", { meta: true }), isAutoRepeat: true }, wc, "darwin"),
+    ).toBe(true);
+  });
+});

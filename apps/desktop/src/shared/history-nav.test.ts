@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isHistoryNavDirection,
   historyNavFromSwipe,
-} from "./navigation-gestures";
+} from "./history-nav";
 
 describe("historyNavFromSwipe", () => {
   it("maps horizontal macOS swipe directions to browser-style history", () => {

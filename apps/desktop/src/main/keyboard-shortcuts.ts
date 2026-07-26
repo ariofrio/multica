@@ -38,17 +38,9 @@ const ZOOM_MAX = 4.5;
  * and every layout.
  */
 /**
- * Result of handleAppShortcut. Anything other than `false` means the caller
- * should `preventDefault()`; the string variants additionally name an IPC the
- * caller must forward to the renderer (the main process has no access to the
- * tab store or per-tab history — those live in the renderer):
- * - `false`: not handled, let Electron continue
- * - `true`: handled (preventDefault), no further action
- * - `"close-tab"`: Cmd/Ctrl+W — close the active tab
- * - `"prev-tab"` / `"next-tab"`: switch product tab
- *   (macOS `Cmd+Shift+[ / ]`; Windows/Linux `Ctrl+PgUp / PgDn`)
- * - `"history-back"` / `"history-forward"`: per-tab history
- *   (macOS `Cmd+[ / ]`; Windows/Linux `Alt+← / →`)
+ * Anything other than `false` means the caller should `preventDefault()`. The
+ * string variants additionally name an intent the caller must forward to the
+ * renderer, which owns the tab store and per-tab history.
  */
 export type ShortcutResult =
   | boolean
@@ -59,29 +51,28 @@ export type ShortcutResult =
   | "history-forward";
 
 /**
- * Tab-switch and per-tab-history chords, using each platform's native
- * convention rather than a blind Cmd→Ctrl swap (which would put macOS's
- * bracket keys on Windows, where they mean nothing). Returns the intent to
- * forward to the renderer, or `null` when the input isn't a navigation chord.
+ * Which renderer a window hosts. Only the shell has a tab strip and per-tab
+ * history; issue windows show one route, so claiming their navigation chords
+ * would swallow the keystroke and do nothing.
+ */
+export type WindowSurface = "shell" | "issue";
+
+/**
+ * Each platform's native convention rather than a blind Cmd→Ctrl swap, which
+ * would put macOS's bracket keys on Windows, where they mean nothing.
  *
- *   macOS:         Cmd+[ / Cmd+]              history back / forward
- *                  Cmd+Shift+[ / Cmd+Shift+]  previous / next tab
- *   Windows/Linux: Alt+Left / Alt+Right        history back / forward
- *                  Ctrl+PageUp / Ctrl+PageDown previous / next tab
- *
- * `input.key` follows the DOM `KeyboardEvent.key` values ("ArrowLeft",
- * "PageUp", …). Each branch demands an exact modifier set so a superset chord
- * (e.g. Ctrl+Alt+Left) does not trigger navigation.
+ * Every branch demands an exact modifier set, so a superset chord (say
+ * Ctrl+Alt+Left) stays free for a configurable action. `isReservedShortcut`
+ * in packages/core mirrors these same sets.
  */
 function matchNavigationShortcut(
   input: ShortcutInput,
   isMac: boolean,
 ): ShortcutResult | null {
   if (isMac) {
-    // Command only — no Control/Option. Shift selects tab-switch vs history.
     if (!input.meta || input.control || input.alt) return null;
-    // With Shift the bracket keys report their shifted glyphs ("{" / "}") on a
-    // US layout, mirroring the zoom cases' "+"/"_" assumption — accept either.
+    // With Shift the bracket keys report their shifted glyphs on a US layout,
+    // mirroring the zoom cases' "+"/"_" assumption — accept either.
     const leftBracket = input.key === "[" || input.key === "{";
     const rightBracket = input.key === "]" || input.key === "}";
     if (leftBracket || rightBracket) {
@@ -91,7 +82,6 @@ function matchNavigationShortcut(
     return null;
   }
 
-  // Windows / Linux — history on Alt+arrows, tabs on Ctrl+PageUp/PageDown.
   if (input.alt && !input.control && !input.meta && !input.shift) {
     if (input.key === "ArrowLeft") return "history-back";
     if (input.key === "ArrowRight") return "history-forward";
@@ -107,6 +97,7 @@ export function handleAppShortcut(
   input: ShortcutInput,
   webContents: ZoomTarget,
   platform: NodeJS.Platform = process.platform,
+  surface: WindowSurface = "shell",
 ): ShortcutResult {
   if (input.type !== "keyDown") return false;
   const isMac = platform === "darwin";
@@ -120,11 +111,16 @@ export function handleAppShortcut(
     return true;
   }
 
-  // Tab switching & per-tab history, using each platform's native chords.
-  // Handled before the primary-modifier gate below because the Windows/Linux
+  // Matched before the primary-modifier gate below because the Windows/Linux
   // history binding is Alt+arrow, which carries no Cmd/Ctrl.
-  const navigation = matchNavigationShortcut(input, isMac);
-  if (navigation) return navigation;
+  //
+  // Auto-repeat is deliberately allowed here, unlike Cmd/Ctrl+W: holding the
+  // key to walk several tabs or history entries is what every browser and
+  // editor does, and both directions are reversible. Closing tabs is not.
+  if (surface === "shell") {
+    const navigation = matchNavigationShortcut(input, isMac);
+    if (navigation) return navigation;
+  }
 
   if (!primary || !noSecondaryModifiers) return false;
 

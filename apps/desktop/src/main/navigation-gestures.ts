@@ -2,7 +2,7 @@ import type { BrowserWindow } from "electron";
 import {
   HISTORY_NAV_CHANNEL,
   historyNavFromSwipe,
-} from "../shared/navigation-gestures";
+} from "../shared/history-nav";
 
 export function installNavigationGestures(
   win: BrowserWindow,

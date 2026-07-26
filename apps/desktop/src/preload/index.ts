@@ -14,7 +14,7 @@ import {
   isHistoryNavDirection,
   HISTORY_NAV_CHANNEL,
   type HistoryNavDirection,
-} from "../shared/navigation-gestures";
+} from "../shared/history-nav";
 import {
   isTabSelectionDirection,
   TAB_SELECTION_CHANNEL,
@@ -191,7 +191,7 @@ const desktopAPI = {
     }) => void,
   ) => subscribeToMainRendererChannel("inbox:open", callback),
   /** Listen for per-tab history back/forward requests — a macOS trackpad
-   *  swipe or the Cmd/Ctrl+[ / ] keyboard shortcuts. Returns an unsubscribe fn. */
+   *  swipe or the history shortcuts. Returns an unsubscribe fn. */
   onHistoryNav: (callback: (direction: HistoryNavDirection) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, direction: unknown) => {
       if (isHistoryNavDirection(direction)) callback(direction);
@@ -220,9 +220,8 @@ const desktopAPI = {
       ipcRenderer.removeListener("tab:close-active", handler);
     };
   },
-  /** Listen for Cmd/Ctrl+Shift+[ / ] tab-switch requests from the main
-   *  process. The renderer should activate the previous/next product tab in
-   *  the active workspace. Returns an unsubscribe fn. */
+  /** Listen for tab-switch requests from the main process. Returns an
+   *  unsubscribe fn. */
   onSelectRelativeTab: (
     callback: (direction: TabSelectionDirection) => void,
   ) => {
