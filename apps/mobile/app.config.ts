@@ -7,7 +7,8 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
  * APP_ENV is set by package.json scripts:
  *   - dev          → APP_ENV unset (treated as "development")
  *   - dev:staging  → APP_ENV=staging
- *   - dev:prod     → APP_ENV=production (rare; usually only for EAS build)
+ *   - dev:prod     → APP_ENV=production
+ *   - ios:testflight → APP_ENV=production (the release path)
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
   const env = process.env.APP_ENV ?? "development";
@@ -32,6 +33,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: "./assets/icon.png",
     ios: {
       supportsTablet: false,
+      // CFBundleVersion. Local device installs never care, but App Store
+      // Connect rejects a TestFlight upload whose build number it has already
+      // seen for this marketing version — scripts/testflight.sh derives this
+      // from the highest build number App Store Connect already has.
+      buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
       // Per-variant bundle id overrides exist for one reason: an Apple ID
       // can only sign bundle prefixes it owns, so contributors not on the
       // Multica Apple Developer team (and external users self-building a
