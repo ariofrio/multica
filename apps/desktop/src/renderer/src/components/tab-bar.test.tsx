@@ -514,21 +514,15 @@ describe("TabBar focus handling", () => {
     const projects = getByLabelText("Projects");
     projects.focus();
     expect(document.activeElement).toBe(projects);
-    // `detail` is the click count — a real pointer click reports >= 1. It must
-    // be set explicitly: fireEvent.click defaults to 0, which is what a
-    // KEYBOARD activation looks like (see the next test).
+    // detail must be explicit: fireEvent.click defaults to 0, which is a
+    // KEYBOARD activation (see the next test), not a pointer click.
     fireEvent.click(projects, { detail: 1 });
-    // After a mouse click the tab must not keep DOM focus: otherwise the next
-    // keydown flips the browser's focus-visible heuristic and rings the tab.
     expect(document.activeElement).not.toBe(projects);
   });
   it("keeps focus when the tab is activated from the keyboard, so the user stays in the tab order", () => {
     const { getByLabelText } = render(<TabBar />);
     const projects = getByLabelText("Projects");
     projects.focus();
-    // Enter / Space on a focused <button> dispatches a click too, marked only
-    // by `detail === 0`. Blurring there would send focus to <body> and make
-    // the user's next Tab restart from the top of the document.
     fireEvent.click(projects, { detail: 0 });
     expect(document.activeElement).toBe(projects);
     expect(state.setActiveTab).toHaveBeenCalledWith("tB");
@@ -536,10 +530,25 @@ describe("TabBar focus handling", () => {
   it("suppresses the default browser focus outline in favor of an inset ring that hugs the tab", () => {
     const { getByLabelText } = render(<TabBar />);
     const tab = getByLabelText("Projects");
-    // The custom tab button must opt out of the global default outline
-    // (packages/ui base layer) and instead show an INSET focus-visible ring,
-    // so keyboard focus reads as part of the tab rather than floating on top.
     expect(tab.className).toContain("outline-none");
     expect(tab.className).toContain("ring-inset");
+  });
+});
+
+describe("TabBar accessibility", () => {
+  it("marks the active tab with aria-current", () => {
+    const { getByLabelText } = render(<TabBar />);
+    expect(getByLabelText("Issues").getAttribute("aria-current")).toBe("page");
+    expect(getByLabelText("Projects").getAttribute("aria-current")).toBeNull();
+  });
+
+  it("says nothing on mount, then announces the tab a shortcut switched to", () => {
+    const { container, rerender } = render(<TabBar />);
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toBe("");
+
+    state.byWorkspace.acme.activeTabId = "tB";
+    rerender(<TabBar />);
+    expect(liveRegion?.textContent).toBe("Projects");
   });
 });

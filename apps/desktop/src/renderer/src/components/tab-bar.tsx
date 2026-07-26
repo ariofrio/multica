@@ -209,16 +209,11 @@ function SortableTabItem({
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // A POINTER click must not leave the tab holding keyboard focus. If it
-    // did, the next keydown (e.g. the tab/history shortcuts) flips the
-    // browser's focus-visible heuristic and paints a focus ring on a tab the
-    // user only clicked. Dropping focus keeps the ring for real keyboard
-    // navigation (Tab) only.
-    //
-    // Keyboard activation must NOT blur: Enter/Space on a focused <button>
-    // also dispatches a click, distinguishable only by `detail === 0` (no
-    // click count). Blurring there would drop the user out of the tab order —
-    // their next Tab would restart from the top of the document.
+    // A pointer click must not leave the tab focused, or the next keydown
+    // flips the browser's focus-visible heuristic and rings a tab the user
+    // only clicked. Enter/Space dispatch a click too and must keep focus,
+    // else the user's next Tab restarts from the top of the document —
+    // `detail` (the click count) is the only thing separating the two.
     if (e.detail !== 0) e.currentTarget.blur();
     if (isActive) return;
     setActiveTab(tab.id);
@@ -268,6 +263,7 @@ function SortableTabItem({
       {...listeners}
       onClick={handleClick}
       aria-label={tab.pinned ? `${title} (pinned)` : title}
+      aria-current={isActive ? "page" : undefined}
       data-tab-active={isActive ? "true" : undefined}
       data-tab-entering={isEntering ? "true" : undefined}
       title={tab.pinned ? `${title} (pinned)` : undefined}
@@ -522,6 +518,25 @@ function NewTabButton() {
   );
 }
 
+/**
+ * Title to mirror into a polite live region. A shortcut-driven tab switch
+ * moves neither focus nor the reading cursor, so without this assistive tech
+ * has nothing to report. Stays empty until the active tab actually changes —
+ * announcing the initial tab on mount would talk over the page load.
+ */
+function useActiveTabAnnouncement(activeTabId: string, title: string): string {
+  const [announcement, setAnnouncement] = useState("");
+  const previousActiveIdRef = useRef(activeTabId);
+
+  useEffect(() => {
+    if (previousActiveIdRef.current === activeTabId) return;
+    previousActiveIdRef.current = activeTabId;
+    setAnnouncement(title);
+  }, [activeTabId, title]);
+
+  return announcement;
+}
+
 export function TabBar() {
   const group = useActiveGroup();
   const moveTab = useTabStore((s) => s.moveTab);
@@ -559,6 +574,10 @@ export function TabBar() {
     newestTabId && newestTabId !== activeTabId ? newestTabId : null;
   const pinnedCount = tabs.filter((t) => t.pinned).length;
   const unpinnedCount = tabs.length - pinnedCount;
+  const activeTabAnnouncement = useActiveTabAnnouncement(
+    activeTabId,
+    tabs.find((t) => t.id === activeTabId)?.title ?? "",
+  );
 
   useLayoutEffect(() => {
     const currentTabIds = tabOrder ? tabOrder.split("\0") : [];
@@ -618,6 +637,9 @@ export function TabBar() {
 
   return (
     <div className="flex h-full w-full min-w-0 max-w-full items-center justify-start gap-0.5 px-2">
+      <span className="sr-only" aria-live="polite">
+        {activeTabAnnouncement}
+      </span>
       <div className="relative flex h-full min-w-0 flex-1 items-center">
         <DndContext
           sensors={sensors}

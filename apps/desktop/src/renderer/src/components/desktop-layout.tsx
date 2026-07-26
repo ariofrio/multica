@@ -3,7 +3,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@multica/ui/lib/utils";
 import { useTabHistory } from "@/hooks/use-tab-history";
-import { useTabStore } from "@/stores/tab-store";
+import {
+  useHistoryNav,
+  useTabSelectionShortcut,
+} from "@/hooks/use-navigation-shortcuts";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -86,30 +89,6 @@ function WindowToolbar() {
 
 function SidebarTopSpacer() {
   return <div className={cn("shrink-0", TOP_BAR_HEIGHT_CLASS)} />;
-}
-
-function useHistoryNav() {
-  const { goBack, goForward } = useTabHistory();
-
-  useEffect(() => {
-    return window.desktopAPI.onHistoryNav((direction) => {
-      if (direction === "back") {
-        goBack();
-      } else {
-        goForward();
-      }
-    });
-  }, [goBack, goForward]);
-}
-
-// Cmd/Ctrl+Shift+[ / ] → previous/next tab. Main intercepts the chord and
-// sends the direction here; the tab store owns the actual selection.
-function useTabSelectionShortcut() {
-  useEffect(() => {
-    return window.desktopAPI.onSelectRelativeTab((direction) => {
-      useTabStore.getState().selectAdjacentTab(direction);
-    });
-  }, []);
 }
 
 // The main area's top bar doubles as a window drag region. When the sidebar
