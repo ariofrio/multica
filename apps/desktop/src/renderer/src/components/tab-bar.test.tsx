@@ -143,6 +143,21 @@ beforeEach(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 describe("TabBar hover action buttons", () => {
+  it("aligns the hover-pill corner without changing its inset dimensions", () => {
+    const { container } = render(<TabBar />);
+    const pill = container.querySelector(
+      '[data-tab-id="tB"] [data-hover-pill]',
+    );
+
+    expect(pill).toHaveClass(
+      "inset-x-0.5",
+      "top-1",
+      "bottom-1",
+      "rounded-sm",
+    );
+    expect(pill).not.toHaveClass("rounded-lg");
+  });
+
   it("renders a Pin button on every unpinned tab and an Unpin button on every pinned tab", () => {
     state.byWorkspace.acme.tabs = [
       { id: "tA", url: "/acme/issues", title: "Issues", pinned: true },

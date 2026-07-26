@@ -345,7 +345,8 @@ function SortableTabItem({
         ) : (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-0.5 top-1 bottom-1 rounded-lg bg-sidebar-accent opacity-0 transition-opacity group-hover/tab:opacity-100"
+            data-hover-pill
+            className="pointer-events-none absolute inset-x-0.5 top-1 bottom-1 rounded-sm bg-sidebar-accent opacity-0 transition-opacity group-hover/tab:opacity-100"
           />
         )}
         {showSeparator && (
